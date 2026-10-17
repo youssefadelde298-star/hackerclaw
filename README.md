@@ -75,3 +75,28 @@ hackerclaw --help             # list all flags
 ---
 
 
+
+## Burp Suite integration
+
+hackerclaw connects to Burp two independent ways — run both at once by giving each instance its own bridge port.
+
+**Bridge (Burp -> hackerclaw)** — send selected Burp requests into the agent:
+
+```bash
+hackerclaw --burp 9999      # bridge listener; prints a URL + token
+hackerclaw --burp 9998      # a second, independent instance (different port = no collision)
+```
+
+Load the companion [Burp extension](https://github.com/PentesterFlow/Burp-Integration) and point it at the printed URL + token.
+
+**Proxy chaining (hackerclaw -> Burp)** — route hackerclaw's own HTTP traffic through Burp so it shows up in Burp's HTTP history. Set standard proxy env vars to Burp's proxy listener (use whatever free port Burp is bound to):
+
+```bash
+# Windows (PowerShell)
+$env:HTTPS_PROXY="http://127.0.0.1:8081"; $env:HTTP_PROXY="http://127.0.0.1:8081"; $env:NO_PROXY="localhost,127.0.0.1"; hackerclaw
+
+# macOS / Linux
+HTTPS_PROXY=http://127.0.0.1:8081 HTTP_PROXY=http://127.0.0.1:8081 NO_PROXY=localhost,127.0.0.1 hackerclaw
+```
+
+Each proxy needs its own free port; `NO_PROXY` keeps a local model (e.g. Ollama) off the proxy.
