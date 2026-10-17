@@ -74,4 +74,4 @@ hackerclaw --help             # list all flags
 
 ---
 
-<sub>hackerclaw is a renamed fork of <a href="https://github.com/PentesterFlow/agent">PentesterFlow</a> (v0.1.20), redistributed under the <a href="LICENSE">Apache License 2.0</a>.</sub>
+
