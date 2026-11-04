@@ -120,6 +120,8 @@ export function configPath(): string {
 
 // ---------- Load / save ----------
 
+const saveQueues = new Map<string, Promise<void>>();
+
 export function load(): Config {
   const path = configPath();
   if (!existsSync(path)) {
@@ -144,12 +146,21 @@ export function load(): Config {
  * 0o600 from the moment of creation (no readable window), fsync, then
  * rename. Cleans up the .tmp on any error path.
  */
-export async function save(cfg: Config): Promise<void> {
+export function save(cfg: Config): Promise<void> {
   const path = configPath();
+  const body = `${JSON.stringify(cfg, null, 2)}\n`;
+  const previous = saveQueues.get(path) ?? Promise.resolve();
+  const operation = previous.catch(() => undefined).then(() => writeConfig(path, body));
+  saveQueues.set(path, operation);
+  return operation.finally(() => {
+    if (saveQueues.get(path) === operation) saveQueues.delete(path);
+  });
+}
+
+async function writeConfig(path: string, body: string): Promise<void> {
   const dir = dirname(path);
   mkdirSync(dir, { recursive: true, mode: 0o700 });
 
-  const body = `${JSON.stringify(cfg, null, 2)}\n`;
   const tmp = join(dir, `.pentesterflow.cfg.tmp.${randomBytes(3).toString('hex')}`);
 
   let fh: Awaited<ReturnType<typeof open>> | undefined;

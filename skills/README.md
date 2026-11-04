@@ -10,6 +10,20 @@ skills/
     SKILL.md
     payloads/
       alg-none-variants.txt
+  path-traversal/
+    SKILL.md
+  file-upload/
+    SKILL.md
+    payloads/
+      benign-text-canary.txt
+  sqli/
+    SKILL.md
+    payloads/
+      lab-cases.txt
+  ssrf/
+    SKILL.md
+    payloads/
+      lab-canary-requirements.txt
 ```
 
 ## SKILL.md frontmatter
@@ -59,3 +73,7 @@ Just drop a `<name>/SKILL.md` into one of these — no config needed. Skills
 
 All shipped skills are validated by `src/skills/conformance.test.ts`
 (name/description/allowed-tools), so a malformed skill fails CI.
+
+## Test fixture safety
+
+Payload files are read-only references, not an instruction to send requests. The Member 3 bundle uses a plain-text canary and lab-scope checklists; it does not ship path-bypass strings, internal SSRF destinations, data-extraction probes, or active upload files. Runtime checks require an explicitly authorized lab and human review.

@@ -278,9 +278,7 @@ describe('Agent.run', () => {
       );
 
       const messages = client.requests[0]?.messages ?? [];
-      expect(messages.some((m) => m.content.includes('Local PentesterFlow Intelligence'))).toBe(
-        true,
-      );
+      expect(messages.some((m) => m.content.includes('Local HackerClaw Intelligence'))).toBe(true);
       expect(messages.some((m) => m.content.includes('ecosystem.config.js'))).toBe(true);
     } finally {
       rmSync(tmp, { recursive: true, force: true });

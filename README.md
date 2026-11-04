@@ -72,6 +72,28 @@ hackerclaw --burp 9999        # start the local Burp bridge
 hackerclaw --help             # list all flags
 ```
 
+## Findings and reports
+
+`confirm_finding` saves a Markdown report and a JSON sidecar in `./findings/`. Findings start
+as `needs_human_review`; a reviewer should only change the status to `human_verified` after
+reproducing the issue and checking the evidence.
+
+To merge team submissions, point `/report` at one or more folders containing finding JSON
+sidecars. The command writes an initial Markdown report and a CSV risk register under
+`./reports/`:
+
+```text
+/report                         # reads ./findings/
+/report member-one/findings,member-two/findings
+```
+
+The `confirm_finding` tool accepts an optional assessor-selected `cvss_vector` and calculates
+its CVSS 3.1 Base score locally. Exported JSON sidecars store the vector and calculated score
+under `cvss`, as defined in `schemas/finding-v1.schema.json`. It does not guess missing vectors
+or business impact. Temporal and Environmental metrics are not included. The report keeps
+unverified items separate from confirmed findings, and only `human_verified` records appear in
+its executive summary.
+
 ---
 
 

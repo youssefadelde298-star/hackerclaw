@@ -1,6 +1,5 @@
-// confirm_finding tool. The model calls this when it has reproduced a
-// vulnerability end-to-end. Writes a markdown file under ./findings/ and
-// emits a notifier callback so the TUI can show an in-transcript alert.
+// confirm_finding tool. A human reviews the evidence before the tool writes
+// markdown and JSON under ./findings/ and emits a TUI notification.
 
 import { type Finding, type Severity, type Store, slugify } from '../findings/store.js';
 import type { Prompter } from '../permission/permission.js';
@@ -25,9 +24,10 @@ export class ConfirmFindingTool implements Tool {
 
   description(): string {
     return [
-      'Persist a CONFIRMED vulnerability finding. Call this ONLY after you have reproduced the bug end-to-end with a real request and observed a response that proves it.',
+      'Persist a vulnerability finding for human review. Call this ONLY after a human has reproduced the bug with a real request and observed a response that proves it.',
       '',
-      "Writes a markdown report under ./findings/<slug>.md and surfaces a banner in the TUI. Do not call for theoretical findings, scanner hits you haven't manually verified, or 'suspected' behavior.",
+      'Requires human approval before writing ./findings/<slug>.md and its JSON sidecar. Do not call for theoretical findings, scanner hits, or suspected behavior.',
+      'Optional CVSS v3.1 Base vectors must be selected by the assessor; the score is calculated locally. Leave the vector blank when not assessed.',
     ].join('\n');
   }
 
@@ -47,23 +47,43 @@ export class ConfirmFindingTool implements Tool {
         method: { type: 'string', description: 'HTTP method (GET/POST/PUT/...).' },
         response_excerpt: {
           type: 'string',
-          description: 'Short response snippet proving the bug.',
+          description: 'Short, redacted response snippet that supports the finding.',
         },
         impact: {
           type: 'string',
           description: 'One concrete sentence: what an attacker can do.',
         },
+        retest_steps: {
+          type: 'string',
+          description: 'Repeatable steps a human used to reproduce the behavior in scope.',
+        },
         curl: { type: 'string', description: 'Copy-pasteable curl one-liner to reproduce.' },
         remediation: { type: 'string', description: 'Brief remediation guidance (optional).' },
+        business_impact: {
+          type: 'string',
+          description: 'Business impact supplied by the assessor; do not infer or invent it.',
+        },
+        owner: { type: 'string', description: 'Team member or remediation owner (optional).' },
+        cvss_vector: {
+          type: 'string',
+          description:
+            'Assessor-selected CVSS:3.1 Base vector with AV/AC/PR/UI/S/C/I/A. Leave blank if not assessed; score is calculated locally.',
+        },
       },
-      required: ['title', 'severity', 'url', 'impact'],
+      required: [
+        'title',
+        'severity',
+        'url',
+        'method',
+        'response_excerpt',
+        'impact',
+        'retest_steps',
+      ],
     };
   }
 
-  /** No permission gate — writing a markdown file is benign and the user
-   *  explicitly invited findings to land here. */
   requiresPermission(): boolean {
-    return false;
+    return true;
   }
 
   summarize(args: Record<string, unknown>): { summary: string; detail: string } {
@@ -76,11 +96,17 @@ export class ConfirmFindingTool implements Tool {
     const title = argString(args, 'title');
     const severityRaw = argString(args, 'severity').toLowerCase();
     const url = argString(args, 'url');
+    const method = argString(args, 'method').trim().toUpperCase();
+    const responseExcerpt = argString(args, 'response_excerpt').trim();
     const impact = argString(args, 'impact');
+    const retestSteps = argString(args, 'retest_steps').trim();
 
     if (!title) throw new Error('title is required');
     if (!url) throw new Error('url is required');
+    if (!method) throw new Error('method is required');
+    if (!responseExcerpt) throw new Error('response_excerpt is required');
     if (!impact) throw new Error('impact is required');
+    if (!retestSteps) throw new Error('retest_steps is required');
     if (!isSeverity(severityRaw)) {
       throw new Error(`severity must be one of: ${SEVERITIES.join(', ')}`);
     }
@@ -89,11 +115,15 @@ export class ConfirmFindingTool implements Tool {
       title,
       severity: severityRaw,
       url,
+      method,
       impact,
-      method: argString(args, 'method') || undefined,
       parameter: argString(args, 'parameter') || undefined,
       payload: argString(args, 'payload') || undefined,
-      responseExcerpt: argString(args, 'response_excerpt') || undefined,
+      responseExcerpt,
+      retestSteps,
+      businessImpact: argString(args, 'business_impact').trim() || undefined,
+      owner: argString(args, 'owner').trim() || undefined,
+      cvssVector: argString(args, 'cvss_vector').trim() || undefined,
       curl: argString(args, 'curl') || undefined,
       remediation: argString(args, 'remediation') || undefined,
       createdAt: new Date().toISOString(),
@@ -103,7 +133,7 @@ export class ConfirmFindingTool implements Tool {
     const path = await this.store.save(finding);
     this.notifier(finding, path);
 
-    return `Finding "${finding.title}" written to ${path}`;
+    return `Finding "${finding.title}" written to ${path} and ${path.replace(/\.md$/, '.json')}`;
   }
 }
 

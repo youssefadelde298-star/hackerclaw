@@ -1,0 +1,5 @@
+# Checklist only; no request destinations or bypass strings are shipped.
+# A runtime check requires a canary service owned by the team and listed in scope.
+# The human operator must verify a canary event in that service's logs.
+# Never use internal, loopback, private, link-local, multicast, or metadata destinations.
+# If the approved canary or exact application scope is missing, do source review only.

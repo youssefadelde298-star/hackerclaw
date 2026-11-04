@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "id": "template-only",
+  "verification_status": "needs_human_review",
+  "title": "[Replace with the title of an evidence-backed lab finding]",
+  "severity": "info",
+  "url": "https://lab.example.invalid/path",
+  "method": "GET",
+  "response_excerpt": "[Insert a short redacted response excerpt]",
+  "impact": "[Describe only an impact demonstrated in the authorized lab]",
+  "retest_steps": "[Write repeatable manual steps; this template is not a real finding]",
+  "remediation": "[Describe a practical fix]",
+  "created_at": "2026-10-27T00:00:00.000Z"
+}

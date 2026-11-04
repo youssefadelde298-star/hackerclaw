@@ -1,0 +1,5 @@
+# Safety and fixture rules only; no generic injection strings are shipped.
+# Use the assigned training application's documented, non-sensitive fixture values.
+# Restrict checks to one approved non-authentication input and the lab's seeded data.
+# Do not enumerate schemas, retrieve rows, alter data, or send batches of requests.
+# Skip timing and UNION-based checks unless the lab owner provides a harmless test case.

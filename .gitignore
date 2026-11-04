@@ -23,6 +23,7 @@ dist/
 # Local agent state & scan output — never commit. Anchored to the repo
 # root so they don't also exclude source dirs like src/findings/.
 /findings/
+/reports/
 /recon/
 /.pentesterflow/
 bughunter-report-*.md

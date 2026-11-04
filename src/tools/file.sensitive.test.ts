@@ -48,15 +48,18 @@ describe('FileReadTool sensitive gating', () => {
     expect(out).toBe('PRIVATE KEY');
   });
 
-  it('catches a symlink that points into a sensitive path', async () => {
-    const link = join(tmp, 'innocent.txt');
-    symlinkSync(join(tmp, '.ssh', 'id_rsa'), link);
-    // Lexically `innocent.txt` is not sensitive; the gate must follow the
-    // link to the real target and still prompt.
-    await expect(new FileReadTool().run({ path: link }, signal, new AlwaysDeny())).rejects.toThrow(
-      /sensitive path denied/,
-    );
-  });
+  it.skipIf(process.platform === 'win32')(
+    'catches a symlink that points into a sensitive path',
+    async () => {
+      const link = join(tmp, 'innocent.txt');
+      symlinkSync(join(tmp, '.ssh', 'id_rsa'), link);
+      // Lexically `innocent.txt` is not sensitive; the gate must follow the
+      // link to the real target and still prompt.
+      await expect(
+        new FileReadTool().run({ path: link }, signal, new AlwaysDeny()),
+      ).rejects.toThrow(/sensitive path denied/);
+    },
+  );
 });
 
 describe('FileWriteTool sensitive gating', () => {

@@ -4,7 +4,7 @@
 // explicit user prompt.
 
 import { homedir } from 'node:os';
-import { resolve, sep } from 'node:path';
+import { posix, resolve, sep } from 'node:path';
 
 // macOS canonicalizes /etc -> /private/etc, so denylist both spellings: a
 // file_read of /private/etc/sudoers (or a realpath that lands there) must be
@@ -46,9 +46,10 @@ const HOME_RELATIVE = [
  */
 export function isSensitivePath(abs: string): boolean {
   const cleaned = resolve(abs);
+  const unixPath = posix.normalize(abs);
 
   for (const p of SYSTEM_PATHS) {
-    if (matchesPath(cleaned, p)) return true;
+    if (matchesPath(cleaned, p) || matchesPosixPath(unixPath, p)) return true;
   }
 
   const home = homedir();
@@ -70,4 +71,10 @@ function matchesPath(candidate: string, target: string): boolean {
   const c = candidate.toLowerCase();
   const t = target.toLowerCase();
   return c === t || c.startsWith(t + sep);
+}
+
+function matchesPosixPath(candidate: string, target: string): boolean {
+  const c = candidate.toLowerCase();
+  const t = target.toLowerCase();
+  return c === t || c.startsWith(`${t}${posix.sep}`);
 }

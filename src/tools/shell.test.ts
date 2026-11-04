@@ -23,6 +23,10 @@ function withPlatform<T>(platform: NodeJS.Platform, fn: () => T): T {
   }
 }
 
+function rewriteOnPosix(command: string): string {
+  return withPlatform('linux', () => rewritePortableCommand(command));
+}
+
 describe('shell denylist', () => {
   const cases: Array<{ name: string; cmd: string; shouldBlock: boolean }> = [
     { name: 'rm -rf /', cmd: 'rm -rf /', shouldBlock: true },
@@ -56,20 +60,25 @@ describe('shell denylist', () => {
 });
 
 describe('ShellTool.run', () => {
-  it('describes portable grep usage and avoids grep -P guidance', () => {
+  it('describes shell usage for the current platform', () => {
     const desc = new ShellTool().description();
-    expect(desc).toContain('grep -P');
-    expect(desc).toContain('grep -E');
-    expect(desc).toContain('macOS/BSD');
+    if (process.platform === 'win32') {
+      expect(desc).toContain('PowerShell');
+      expect(desc).not.toContain('macOS/BSD');
+    } else {
+      expect(desc).toContain('grep -P');
+      expect(desc).toContain('grep -E');
+      expect(desc).toContain('macOS/BSD');
+    }
   });
 
   it('executes a benign command and returns stdout', async () => {
     const t = new ShellTool();
-    const out = await t.run(
-      { command: 'echo hello && echo world' },
-      new AbortController().signal,
-      new AlwaysAllow(),
-    );
+    const command =
+      process.platform === 'win32'
+        ? "Write-Output 'hello'; Write-Output 'world'"
+        : 'echo hello && echo world';
+    const out = await t.run({ command }, new AbortController().signal, new AlwaysAllow());
     expect(out).toContain('exit: 0');
     expect(out).toContain('hello');
     expect(out).toContain('world');
@@ -85,75 +94,84 @@ describe('ShellTool.run', () => {
   it('rewrites common grep -P forms to portable perl, passing the pattern as data', () => {
     // The pattern travels through the PF_GREP_PAT env var, never inlined into
     // the Perl source, so a malicious pattern can't become a code-exec primitive.
-    expect(rewritePortableCommand("printf 'abc' | grep -P 'a'")).toBe(
+    expect(rewriteOnPosix("printf 'abc' | grep -P 'a'")).toBe(
       "printf 'abc' | PF_GREP_PAT='a' perl -ne 'BEGIN { $p = $ENV{PF_GREP_PAT} } print if /$p/'",
     );
-    expect(rewritePortableCommand("printf 'abc' | grep -oP 'a.'")).toBe(
+    expect(rewriteOnPosix("printf 'abc' | grep -oP 'a.'")).toBe(
       "printf 'abc' | PF_GREP_PAT='a.' perl -ne 'BEGIN { $p = $ENV{PF_GREP_PAT} } while (/$p/g) { print \"$&\\n\" }'",
     );
-    expect(rewritePortableCommand("printf 'ABC' | grep -iP 'a'")).toBe(
+    expect(rewriteOnPosix("printf 'ABC' | grep -iP 'a'")).toBe(
       "printf 'ABC' | PF_GREP_PAT='a' perl -ne 'BEGIN { $p = $ENV{PF_GREP_PAT} } print if /$p/i'",
     );
-    expect(rewritePortableCommand("printf 'abc' | grep --perl-regexp 'a'")).toBe(
+    expect(rewriteOnPosix("printf 'abc' | grep --perl-regexp 'a'")).toBe(
       "printf 'abc' | PF_GREP_PAT='a' perl -ne 'BEGIN { $p = $ENV{PF_GREP_PAT} } print if /$p/'",
     );
   });
 
-  it('treats a grep -P pattern as inert data, not a Perl exec primitive (H1)', async () => {
-    // The classic payload runs `id` when inlined into a /.../ literal; as data
-    // it must match nothing and never execute.
-    const rewritten = rewritePortableCommand("grep -P '@{[ `id` ]}' /dev/null");
-    expect(rewritten).not.toContain('`id`/');
-    expect(rewritten).toContain('PF_GREP_PAT=');
-    const out = await new ShellTool().run(
-      { command: "printf 'x\\n' | grep -P '@{[ `echo PWNED` ]}'", timeout_seconds: 5 },
-      new AbortController().signal,
-      new AlwaysAllow(),
-    );
-    expect(out).not.toContain('PWNED');
-  });
+  it.skipIf(process.platform === 'win32')(
+    'treats a grep -P pattern as inert data, not a Perl exec primitive (H1)',
+    async () => {
+      // The classic payload runs `id` when inlined into a /.../ literal; as data
+      // it must match nothing and never execute.
+      const rewritten = rewriteOnPosix("grep -P '@{[ `id` ]}' /dev/null");
+      expect(rewritten).not.toContain('`id`/');
+      expect(rewritten).toContain('PF_GREP_PAT=');
+      const out = await new ShellTool().run(
+        { command: "printf 'x\\n' | grep -P '@{[ `echo PWNED` ]}'", timeout_seconds: 5 },
+        new AbortController().signal,
+        new AlwaysAllow(),
+      );
+      expect(out).not.toContain('PWNED');
+    },
+  );
 
   it('does not rewrite grep -P inside an echo/awk string, or with trailing flags', () => {
     // L2: literal `grep -P` inside a quoted string is not at a command position.
-    expect(rewritePortableCommand('echo "look at grep -P xyz"')).toBe('echo "look at grep -P xyz"');
+    expect(rewriteOnPosix('echo "look at grep -P xyz"')).toBe('echo "look at grep -P xyz"');
     // L1: trailing context/format flags have no faithful perl translation, so we
     // leave the original in place (the portability guard then surfaces a message).
-    expect(rewritePortableCommand("grep -P 'a' -A3 file")).toBe("grep -P 'a' -A3 file");
+    expect(rewriteOnPosix("grep -P 'a' -A3 file")).toBe("grep -P 'a' -A3 file");
   });
 
-  it('executes rewritten grep -P commands instead of blocking on macOS/BSD grep', async () => {
-    const t = new ShellTool();
-    const out = await t.run(
-      { command: "printf 'abc\\nxyz\\n' | grep -oP 'a.'", timeout_seconds: 5 },
-      new AbortController().signal,
-      new AlwaysAllow(),
-    );
-    expect(out).toContain('ab');
-    expect(out).toContain('exit: 0');
-  });
+  it.skipIf(process.platform === 'win32')(
+    'executes rewritten grep -P commands instead of blocking on macOS/BSD grep',
+    async () => {
+      const t = new ShellTool();
+      const out = await t.run(
+        { command: "printf 'abc\\nxyz\\n' | grep -oP 'a.'", timeout_seconds: 5 },
+        new AbortController().signal,
+        new AlwaysAllow(),
+      );
+      expect(out).toContain('ab');
+      expect(out).toContain('exit: 0');
+    },
+  );
 
-  it('blocks known GNU-only commands with portable replacement guidance', async () => {
-    const t = new ShellTool();
-    const cases = [
-      { command: "printf 'abc' | grep -Pr 'a'", message: /grep -P/ },
-      { command: "printf 'abc' | sed -r 's/a/A/'", message: /sed -r/ },
-      { command: "printf 'abc' | base64 -w0", message: /base64 -w/ },
-      { command: 'readlink -f ./package.json', message: /readlink -f/ },
-      { command: 'date -d tomorrow', message: /date -d/ },
-      { command: "printf '' | xargs -r echo", message: /xargs -r/ },
-      { command: 'stat -c %s package.json', message: /stat -c/ },
-      { command: "printf '1.2\\n1.10\\n' | sort -V", message: /sort -V/ },
-      { command: 'timeout 2 curl -s https://example.com', message: /timeout/ },
-    ];
+  it.skipIf(process.platform === 'win32')(
+    'blocks known GNU-only commands with portable replacement guidance',
+    async () => {
+      const t = new ShellTool();
+      const cases = [
+        { command: "printf 'abc' | grep -Pr 'a'", message: /grep -P/ },
+        { command: "printf 'abc' | sed -r 's/a/A/'", message: /sed -r/ },
+        { command: "printf 'abc' | base64 -w0", message: /base64 -w/ },
+        { command: 'readlink -f ./package.json', message: /readlink -f/ },
+        { command: 'date -d tomorrow', message: /date -d/ },
+        { command: "printf '' | xargs -r echo", message: /xargs -r/ },
+        { command: 'stat -c %s package.json', message: /stat -c/ },
+        { command: "printf '1.2\\n1.10\\n' | sort -V", message: /sort -V/ },
+        { command: 'timeout 2 curl -s https://example.com', message: /timeout/ },
+      ];
 
-    for (const tc of cases) {
-      await expect(
-        t.run({ command: tc.command }, new AbortController().signal, new AlwaysAllow()),
-      ).rejects.toThrow(tc.message);
-    }
-  });
+      for (const tc of cases) {
+        await expect(
+          t.run({ command: tc.command }, new AbortController().signal, new AlwaysAllow()),
+        ).rejects.toThrow(tc.message);
+      }
+    },
+  );
 
-  it('allows portable grep and sed alternatives', async () => {
+  it.skipIf(process.platform === 'win32')('allows portable grep and sed alternatives', async () => {
     const t = new ShellTool();
     const out = await t.run(
       { command: "printf 'abc\\n' | grep -E 'a.c' | sed -E 's/a/A/'" },
@@ -172,11 +190,11 @@ describe('ShellTool.run', () => {
 
   it('captures stderr alongside stdout', async () => {
     const t = new ShellTool();
-    const out = await t.run(
-      { command: 'echo stdout-line; echo stderr-line >&2; exit 3' },
-      new AbortController().signal,
-      new AlwaysAllow(),
-    );
+    const command =
+      process.platform === 'win32'
+        ? "[Console]::Out.WriteLine('stdout-line'); [Console]::Error.WriteLine('stderr-line'); exit 3"
+        : 'echo stdout-line; echo stderr-line >&2; exit 3';
+    const out = await t.run({ command }, new AbortController().signal, new AlwaysAllow());
     expect(out).toContain('stdout-line');
     expect(out).toContain('stderr-line');
     expect(out).toContain('exit: 3');
@@ -185,7 +203,10 @@ describe('ShellTool.run', () => {
   it('reports tool timeouts instead of surfacing AbortError', async () => {
     const t = new ShellTool();
     const out = await t.run(
-      { command: 'sleep 2', timeout_seconds: 1 },
+      {
+        command: process.platform === 'win32' ? 'Start-Sleep -Seconds 2' : 'sleep 2',
+        timeout_seconds: 1,
+      },
       new AbortController().signal,
       new AlwaysAllow(),
     );
@@ -200,7 +221,12 @@ describe('ShellTool output cap', () => {
     // Emit ~1MB; the model should only ever see the 64KB head+tail budget plus
     // the truncation marker, and the process must not buffer the whole thing.
     const out = await t.run(
-      { command: 'head -c 1000000 /dev/zero | tr "\\0" "a"' },
+      {
+        command:
+          process.platform === 'win32'
+            ? "Write-Output ('a' * 1000000)"
+            : 'head -c 1000000 /dev/zero | tr "\\0" "a"',
+      },
       new AbortController().signal,
       new AlwaysAllow(),
     );
@@ -216,7 +242,9 @@ describe('ShellTool output cap', () => {
     const out = await t.run(
       {
         command:
-          "printf 'HEAD_MARKER'; head -c 200000 /dev/zero | tr '\\0' 'a'; printf 'TAIL_VERDICT'",
+          process.platform === 'win32'
+            ? "Write-Output ('HEAD_MARKER' + ('a' * 200000) + 'TAIL_VERDICT')"
+            : "printf 'HEAD_MARKER'; head -c 200000 /dev/zero | tr '\\0' 'a'; printf 'TAIL_VERDICT'",
       },
       new AbortController().signal,
       new AlwaysAllow(),
@@ -233,13 +261,13 @@ describe('ShellTool output cap', () => {
 });
 
 describe('BashTool', () => {
-  it('runs bash-only constructs', async () => {
+  it('runs bash-only constructs or the Windows PowerShell fallback', async () => {
     const t = new BashTool();
-    const out = await t.run(
-      { command: '[[ -d /tmp ]] && echo bash-ok' },
-      new AbortController().signal,
-      new AlwaysAllow(),
-    );
+    const command =
+      process.platform === 'win32'
+        ? 'if (Test-Path $env:TEMP) { Write-Output bash-ok }'
+        : '[[ -d /tmp ]] && echo bash-ok';
+    const out = await t.run({ command }, new AbortController().signal, new AlwaysAllow());
     expect(out).toContain('bash-ok');
   });
 });

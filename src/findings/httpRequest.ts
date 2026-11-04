@@ -35,6 +35,7 @@ export function httpRequestFromCurl(command: string, fallbackMethod?: string): s
   const curlIdx = tokens.findIndex((t) => t === 'curl' || t.endsWith('/curl'));
   const args = curlIdx >= 0 ? tokens.slice(curlIdx + 1) : tokens;
   let method = fallbackMethod || '';
+  let explicitMethod = false;
   let target = '';
   const bodyParts: string[] = [];
   const headers: string[] = [];
@@ -43,14 +44,17 @@ export function httpRequestFromCurl(command: string, fallbackMethod?: string): s
     const arg = args[i] ?? '';
     if (arg === '-X' || arg === '--request') {
       method = args[++i] ?? method;
+      explicitMethod = true;
       continue;
     }
     if (arg.startsWith('--request=')) {
       method = arg.slice('--request='.length);
+      explicitMethod = true;
       continue;
     }
     if (arg.startsWith('-X') && arg.length > 2) {
       method = arg.slice(2);
+      explicitMethod = true;
       continue;
     }
     if (arg === '-H' || arg === '--header') {
@@ -80,7 +84,7 @@ export function httpRequestFromCurl(command: string, fallbackMethod?: string): s
         headers.push('Content-Type: application/json');
       }
       bodyParts.push(encodeCurlData(arg, value));
-      if (!method) method = 'POST';
+      if (!explicitMethod) method = 'POST';
       continue;
     }
     const dataEq = dataFlagValue(arg);
@@ -89,7 +93,7 @@ export function httpRequestFromCurl(command: string, fallbackMethod?: string): s
         headers.push('Content-Type: application/json');
       }
       bodyParts.push(encodeCurlData(dataEq.flag, dataEq.value));
-      if (!method) method = 'POST';
+      if (!explicitMethod) method = 'POST';
       continue;
     }
     if (arg === '-b' || arg === '--cookie') {

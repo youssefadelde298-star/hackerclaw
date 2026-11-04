@@ -11,6 +11,7 @@ import type { Agent, AgentRunOptions } from '../agent/agent.js';
 import { type AgentEvent, MaxStepsError } from '../agent/events.js';
 import { findActiveMention, listMentionDir, parseMentionPath } from '../agent/mentions.js';
 import type { Backend } from '../config/config.js';
+import { generateReport } from '../findings/report.js';
 import { listModels } from '../llm/models.js';
 import {
   ANTHROPIC_DEFAULT_BASE_URL,
@@ -1146,6 +1147,43 @@ function handleSlash(
           }),
         );
       return true;
+    case '/report': {
+      const rawDirs = rest.join(' ').trim();
+      const inputDirs = rawDirs
+        ? rawDirs.split(',').map((dir) => dir.trim().replace(/^(['"])(.*)\1$/, '$2'))
+        : ['findings'];
+      if (inputDirs.some((dir) => !dir)) {
+        dispatch({
+          type: 'append',
+          entry: { kind: 'error', text: 'usage: /report [findings-dir[,findings-dir...]]' },
+        });
+        return true;
+      }
+      void generateReport({ inputDirs })
+        .then((result) =>
+          dispatch({
+            type: 'append',
+            entry: {
+              kind: 'system',
+              text: [
+                `Initial report saved: ${result.reportPath}`,
+                `Risk register saved: ${result.riskRegisterPath}`,
+                `Findings: ${result.totalFindings} total, ${result.verifiedFindings} human-verified, ${result.reviewFindings} need review.`,
+                ...(result.skippedFiles.length
+                  ? [`Import warnings: ${result.skippedFiles.length} file(s) skipped.`]
+                  : []),
+              ].join('\n'),
+            },
+          }),
+        )
+        .catch((err: unknown) =>
+          dispatch({
+            type: 'append',
+            entry: { kind: 'error', text: `/report: ${(err as Error).message}` },
+          }),
+        );
+      return true;
+    }
     case '/burp': {
       if (!startBurpBridge) {
         dispatch({

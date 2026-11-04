@@ -104,7 +104,13 @@ describe('session.Store', () => {
     const store = Store.newWithID(tmp, newID());
     await store.save([{ role: 'user', content: 'x' }], null);
     const { statSync } = await import('node:fs');
-    const mode = statSync(store.path).mode & 0o777;
+    const file = statSync(store.path);
+    if (process.platform === 'win32') {
+      // Windows ACLs do not expose POSIX 0o600 mode bits through stat().
+      expect(file.isFile()).toBe(true);
+      return;
+    }
+    const mode = file.mode & 0o777;
     expect(mode).toBe(0o600);
   });
 
@@ -114,7 +120,12 @@ describe('session.Store', () => {
     expect(outPath).toBe(join(tmp, 'context', 'abc123.md'));
     expect(readFileSync(outPath, 'utf8')).toContain('redacted history');
     const { statSync } = await import('node:fs');
-    const mode = statSync(outPath).mode & 0o777;
+    const file = statSync(outPath);
+    if (process.platform === 'win32') {
+      expect(file.isFile()).toBe(true);
+      return;
+    }
+    const mode = file.mode & 0o777;
     expect(mode).toBe(0o600);
   });
 });

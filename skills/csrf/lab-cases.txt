@@ -1,0 +1,29 @@
+# CSRF lab fixtures and safety rules only; no cross-site request templates, bypasses, or token manipulation steps are shipped.
+# Use only with the assigned training application's documented route, tester-owned account, and reversible lab fixture.
+
+[approved-fixture]
+# The lab owner must supply all of the following before testing:
+# - Exact endpoint and method
+# - Tester-owned account
+# - Reversible display-only preference or equivalent harmless state
+# - Expected before/after value
+# - Approved negative-control behavior
+
+# Baseline record
+# - Capture the normal in-app request and its redacted response.
+# - Record CSRF/intent fields, relevant cookie attributes, Origin/Referer policy, method, and resulting state.
+
+# Approved negative-control
+# - Use only the lab's documented negative-control fixture within the normal tester-owned application flow.
+# - Expected safe outcome: the server rejects the request and the reversible state does not change.
+# - Do not modify cookies/headers, use another account's token, create cross-site content, or attempt alternative methods/routes.
+
+# Review cases
+# - Token design: server-generated, unpredictable, session/action-bound, and validated before state change.
+# - Route design: no state change through GET; consistent checks on each accepted request representation.
+# - Defense in depth: exact Origin validation where appropriate; Secure/HttpOnly/SameSite cookie configuration.
+
+# Stop conditions
+# - The action affects account recovery, identity, money, authorization, security settings, or another user's data.
+# - A test would require a foreign page, iframe, cookie/header alteration, token reuse, or bypass behavior.
+# - No reversible lab fixture or approved negative-control is available.

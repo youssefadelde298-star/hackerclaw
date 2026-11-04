@@ -1,0 +1,31 @@
+# XSS lab fixtures and safety rules only; no executable payloads or filter-bypass strings are shipped.
+# Use only on the assigned training application's documented routes, test account, and non-sensitive fixture data.
+# Do not test authentication, account settings, payment, administrative, messaging-to-others, or external-integration features.
+
+[approved-inert-marker]
+xss_lab_marker_7Q4M2
+
+# Baseline record
+# - Capture one normal request/response before adding the marker.
+# - Change only one approved field per request.
+# - Search for the exact marker in raw response, rendered DOM, and relevant first-party source code.
+
+# Reflected-input case
+# - Allowed targets: the lab's documented search or display-only parameter.
+# - Expected evidence: whether the inert marker is reflected and its exact rendering context.
+# - Not evidence by itself: a marker merely appearing as safely encoded text.
+
+# Stored-input case
+# - Allowed target: one lab-owned comment/profile fixture specified by the lab owner.
+# - View only with the tester's own second lab session when explicitly permitted.
+# - Delete the fixture via the normal UI after the check and record cleanup.
+
+# DOM-tracing case
+# - Use the marker in the lab-documented URL parameter or fragment only.
+# - Trace its flow in first-party code; identify source, transformations, and sink.
+# - Do not call a dangerous sink with active content. Use an executable proof only when the lab supplies a harmless, local-only fixture.
+
+# Stop conditions
+# - The value reaches another user, an unapproved host, sensitive content, or an account-affecting workflow.
+# - The lab does not document a harmless proof fixture.
+# - The application becomes unstable or rate-limits requests.

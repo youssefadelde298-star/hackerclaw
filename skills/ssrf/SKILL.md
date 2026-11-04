@@ -1,53 +1,41 @@
 ---
 name: ssrf
-description: Deep-dive SSRF testing — bypass filters, hit cloud metadata, chain to RCE/credential disclosure. Use when a target parameter clearly accepts a URL or hostname.
+description: Controlled SSRF triage for explicitly authorized training or staging applications. Covers source/config review and a single owner-controlled canary check; excludes internal destinations, metadata, bypasses, scanning, and data retrieval. Use when an in-scope feature fetches a URL.
 allowed-tools:
+  - ask_user
   - http
-  - shell
+  - read_payloads
   - file_write
+  - confirm_finding
 ---
 
-# SSRF playbook
+# SSRF: controlled validation
 
-You suspect a parameter is being fetched server-side. Confirm it, escalate it, prove impact.
+Use this playbook only for an explicitly authorized training or staging application. The agent may help review supplied source/configuration and, only after explicit scope confirmation, send one low-impact request to the in-scope application. A human tester owns scope, evidence review, and the final finding decision.
 
-Execution rule: use the actual parameter, callback host, and target URL before running commands. Never write literal placeholders such as `<endpoint>` or `<role>` to files; if the collaborator/canary host is missing, ask once.
+## 1. Scope gate
 
-## 1. Confirm the primitive
-Send the `http` request with the parameter pointing to:
-- An out-of-band canary the user provides (interactsh / burp collaborator / a netcat listener they own)
-- Compare to a control value to confirm the server is doing the fetch
+- Before any request, confirm the exact authorized host, path, method, parameter, test account, request limit, and permitted canary destination with `ask_user`. If any part is unclear, ask once and wait.
+- Read `read_payloads(skill="ssrf", file="lab-canary-requirements.txt")`. It is a checklist only; it contains no destination or bypass strings.
+- If the user has not supplied a canary they control, stop at source/configuration review. Do not invent a callback destination.
+- Use the `http` tool only for the scoped application request and only after the user explicitly asks for that check. Do not make requests to a canary, internal service, or other origin.
 
-If the canary fires, you have at minimum a blind SSRF.
+## 2. Review the fetch boundary
 
-## 2. Map filter behavior
-Probe how the server validates the URL. For each probe, capture status and body:
-- `http://127.0.0.1`, `http://localhost`, `http://0.0.0.0`
-- IPv6: `http://[::1]`, `http://[::ffff:127.0.0.1]`
-- Decimal/octal: `http://2130706433`, `http://0177.0.0.1`
-- DNS rebinding hosts the user provides
-- Schemes: `gopher://`, `file:///etc/passwd`, `dict://`, `ftp://`
-- Redirect chain: a user-controlled URL that 302s to internal target
+- Trace whether user-controlled input reaches a server-side HTTP client. Prefer reviewing the code and configuration before any runtime test.
+- Check for a strict scheme and hostname allowlist, canonical host parsing, DNS/IP checks at connection time, redirect revalidation, egress restrictions, short timeouts, response-size limits, and removal of sensitive headers.
+- Confirm that fetched response bodies are not returned to users unless the feature requires it and access control is enforced.
+- Do not test access to internal, loopback, private, link-local, multicast, or cloud metadata destinations. Do not test alternate schemes, redirect chains, DNS rebinding, port discovery, or credential retrieval.
 
-Group probes by outcome to fingerprint the parser (Python urllib? Java URL? curl? net/http?).
+## 3. One controlled check
 
-## 3. Hit cloud metadata
-If you suspect AWS:
-```
-GET http://169.254.169.254/latest/meta-data/iam/security-credentials/
-GET http://169.254.169.254/latest/meta-data/iam/security-credentials/<role>
-```
-If IMDSv2 is enforced, attempt to obtain the token via the same SSRF if the primitive supports headers.
+- Use one operator-provided, team-controlled canary only when it is explicitly included in the approved test plan. Change no other request field.
+- Capture a sanitized baseline and the single approved test response. A response difference alone is not proof; the human operator must verify the canary event in the canary service's own logs.
+- Stop if the request redirects outside scope, the application becomes unstable, or any sensitive or unexpected data appears. Do not copy or inspect that data.
+- If the lab does not provide a safe fixture or evidence source, mark the behavior unconfirmed and stop.
 
-For GCP: `http://metadata.google.internal/computeMetadata/v1/` with `Metadata-Flavor: Google`.
-For Azure: `http://169.254.169.254/metadata/instance?api-version=2021-02-01` with `Metadata: true`.
+## 4. Evidence and remediation
 
-## 4. Internal service discovery
-With the SSRF confirmed, sweep common internal ports/paths from the victim's perspective: `:80`, `:443`, `:6379` (Redis), `:9200` (Elastic), `:8500` (Consul), `:2375` (Docker), `:25` (SMTP). Use response time + body fingerprint.
-
-## 5. Prove impact
-- Stolen credentials → demonstrate by listing one S3 bucket / one GCS bucket the role can reach (read-only).
-- Internal admin panel → fetch a single page that's clearly internal.
-- Source code / config disclosure → grab one file via `file://` or internal HTTP.
-
-Write a report to `findings/ssrf-<endpoint>.md` with the exact request, the exact response, and the impact you proved. Stop there.
+- Record the exact in-scope feature, sanitized baseline/test requests, the human-verified canary log reference, and the limits observed. Do not include credentials or internal response data.
+- Recommend strict destination allowlists, connection-time IP validation, redirect revalidation or disabling redirects, network egress controls, bounded time/response size, and safe handling of fetched content.
+- Draft findings only from evidence actually observed. Keep AI output at `verification_status: needs_human_review`; call `confirm_finding` only after the tester confirms the retest and approves the human confirmation prompt.

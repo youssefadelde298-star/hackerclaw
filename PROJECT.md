@@ -478,6 +478,11 @@ heading + impact/payload/evidence/repro-curl/remediation sections.
 `httpRequest.ts` converts findings/curl into raw HTTP/1.1 requests (`findingRequestForBurp`,
 `httpRequestFromCurl`) for Burp issue import.
 
+**Risk assessment and reports** (`src/findings/cvss.ts`, `report.ts`) — optional assessor-supplied
+CVSS 3.1 Base vectors are calculated locally; team JSON sidecars are consolidated into a
+Markdown draft and CSV risk register with `/report`. Only `human_verified` records enter the
+executive summary; missing business impact, CVSS, scope, and dates remain explicitly unassessed.
+
 ---
 
 ## 11. Browser / Burp capture & MCP
@@ -566,6 +571,7 @@ defaults are used.
 | `./.pentesterflow/skills/<name>/SKILL.md` | Project-local skills |
 | `./findings/<slug>.md` | Confirmed findings |
 | `./findings/coverage-<session-id>.json` | Coverage state |
+| `./reports/` | Local initial reports and risk-register CSVs |
 | `~/.pentesterflow/logs/pentesterflow.log` | JSON-lines logs (rotates at 4 MB) |
 | `~/.pentesterflow/debug/session-*.jsonl` | Opt-in full session debug logs |
 
@@ -606,6 +612,7 @@ defaults are used.
 | `/compact` | Summarize into persistent memory |
 | `/memory` | Show current session memory |
 | `/snapshot` | Write a redacted context snapshot now |
+| `/report [findings-dir[,findings-dir...]]` | Generate a Markdown draft + CSV risk register |
 | `/burp [port]` | Start the Burp bridge, print URL + token |
 | `/skills [enable\|disable\|new <name>]` | Manage / scaffold skills |
 | `/maxsteps <n>` | Per-turn tool-call cap |
@@ -678,7 +685,7 @@ src/
   skills/         registry.ts, discovery.ts, loadSkill.ts, template.ts, validate.ts
   session/        store.ts
   coverage/       store.ts
-  findings/       store.ts, httpRequest.ts
+  findings/       store.ts, httpRequest.ts, cvss.ts, report.ts
   intelligence/   store.ts
   browser/        store.ts, server.ts, mcpServer.ts
   config/         config.ts

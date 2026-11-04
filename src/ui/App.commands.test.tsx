@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { render } from 'ink-testing-library';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Agent } from '../agent/agent.js';
+import { generateReport } from '../findings/report.js';
 import type { Client } from '../llm/client.js';
 import { listModels } from '../llm/models.js';
 import type { ChatResponse } from '../llm/types.js';
@@ -25,6 +26,17 @@ vi.mock('../update/selfUpdate.js', () => ({
     version: 'latest',
     installDir: '/tmp/bin',
     output: 'installed pentesterflow',
+  })),
+}));
+
+vi.mock('../findings/report.js', () => ({
+  generateReport: vi.fn(async () => ({
+    reportPath: '/tmp/reports/pentest-report.md',
+    riskRegisterPath: '/tmp/reports/risk-register.csv',
+    totalFindings: 3,
+    verifiedFindings: 1,
+    reviewFindings: 2,
+    skippedFiles: [],
   })),
 }));
 
@@ -103,6 +115,7 @@ beforeEach(() => {
   setYolo = vi.fn();
   applyProvider = vi.fn(async () => {});
   vi.mocked(listModels).mockClear();
+  vi.mocked(generateReport).mockClear();
 });
 
 afterEach(() => {
@@ -546,6 +559,20 @@ describe('UI slash commands (terminal integration)', () => {
 
     expect(snapshotSpy).toHaveBeenCalledWith('manual /snapshot');
     expect(mounted.lastFrame()).toContain('context snapshot saved');
+    expect(runSpy).not.toHaveBeenCalled();
+  });
+
+  it('/report integrates the requested findings folders without starting an agent turn', async () => {
+    mounted = renderApp();
+    await tick();
+    await submit(mounted.stdin, '/report member-one/findings,member-two/findings');
+    await tick();
+
+    expect(generateReport).toHaveBeenCalledWith({
+      inputDirs: ['member-one/findings', 'member-two/findings'],
+    });
+    expect(mounted.lastFrame()).toContain('Initial report saved: /tmp/reports/pentest-report.md');
+    expect(mounted.lastFrame()).toContain('1 human-verified');
     expect(runSpy).not.toHaveBeenCalled();
   });
 

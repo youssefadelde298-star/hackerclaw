@@ -14,7 +14,7 @@ describe('filterSlash', () => {
 
   it('prefix-matches command names', () => {
     expect(filterSlash('/he').map((s) => s.name)).toEqual(['/help']);
-    expect(filterSlash('/re').map((s) => s.name)).toEqual(['/reset']);
+    expect(filterSlash('/re').map((s) => s.name)).toEqual(['/report', '/reset']);
     expect(
       filterSlash('/t')
         .map((s) => s.name)
@@ -31,6 +31,11 @@ describe('filterSlash', () => {
   it('includes /provider in the catalog', () => {
     expect(SLASH_ITEMS.map((s) => s.name)).toContain('/provider');
     expect(filterSlash('/prov').map((s) => s.name)).toEqual(['/provider']);
+  });
+
+  it('includes /report with a multi-folder argument hint', () => {
+    expect(SLASH_ITEMS.find((item) => item.name === '/report')?.args).toContain('findings-dir');
+    expect(filterSlash('/rep').map((item) => item.name)).toEqual(['/report']);
   });
 
   it('hides the menu once the user is typing args (space after command)', () => {

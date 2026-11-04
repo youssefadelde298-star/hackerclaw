@@ -23,6 +23,11 @@ export const SLASH_ITEMS: SlashItem[] = [
     description: 'saved + session memory; add/list curated facts (or #<text>), forget/clear',
   },
   { name: '/snapshot', description: 'write the current redacted context snapshot now' },
+  {
+    name: '/report',
+    args: '[findings-dir[,findings-dir...]]',
+    description: 'generate a review-safe Markdown report and CSV risk register',
+  },
   { name: '/burp', args: '[port]', description: 'start the local Burp/HackerClaw listener' },
   { name: '/clear', description: 'clear the on-screen transcript only' },
   { name: '/reset', description: 'clear conversation + saved session' },

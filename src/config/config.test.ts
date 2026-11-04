@@ -133,7 +133,13 @@ describe('config', () => {
     cfg.backend = 'ollama';
     await save(cfg);
     const { statSync } = await import('node:fs');
-    const mode = statSync(process.env.PENTESTERFLOW_CONFIG ?? '').mode & 0o777;
+    const file = statSync(process.env.PENTESTERFLOW_CONFIG ?? '');
+    if (process.platform === 'win32') {
+      // Windows ACLs do not expose POSIX 0o600 mode bits through stat().
+      expect(file.isFile()).toBe(true);
+      return;
+    }
+    const mode = file.mode & 0o777;
     expect(mode).toBe(0o600);
   });
 });

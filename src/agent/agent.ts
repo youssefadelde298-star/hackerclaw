@@ -483,7 +483,7 @@ export class Agent {
    *
    *   1. No active skills → no restriction (backward-compatible).
    *   2. Tool doesn't require permission → always allowed (load_skill,
-   *      read_payloads, read_skill_file, coverage, ask, confirm_finding,
+   *      read_payloads, read_skill_file, coverage, ask,
    *      file_read, glob, grep, web_fetch, web_search). These are
    *      workflow / observational and shouldn't be skill-gated.
    *   3. Any active skill OMITS allowed-tools → no restriction. By
@@ -993,7 +993,7 @@ export class Agent {
       // Soft-fail (set runErr) instead of throwing so the model sees the error
       // as a tool result and can self-correct — usually by loading a different
       // skill or giving up on the disallowed action. Workflow tools
-      // (load_skill, coverage, read_*, ask, finding, browser_capture_*) are
+      // (load_skill, coverage, read_*, ask, browser_capture_*) are
       // always allowed regardless of which skill is active.
       const allowed = this.isToolAllowed(tc.function.name);
       if (!allowed.ok) {

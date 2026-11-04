@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "finding-v1.schema.json",
+  "title": "HackerClaw Finding v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "id": { "type": "string", "minLength": 1 },
+    "verification_status": {
+      "type": "string",
+      "enum": ["needs_human_review", "human_verified"]
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low", "info"]
+    },
+    "url": { "type": "string", "format": "uri" },
+    "method": { "type": "string", "pattern": "^[A-Z]+$" },
+    "parameter": { "type": "string" },
+    "payload": { "type": "string" },
+    "response_excerpt": { "type": "string", "minLength": 1 },
+    "impact": { "type": "string", "minLength": 1 },
+    "business_impact": { "type": "string" },
+    "owner": { "type": "string" },
+    "retest_steps": { "type": "string", "minLength": 1 },
+    "curl": { "type": "string" },
+    "remediation": { "type": "string" },
+    "cvss": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": { "const": "3.1" },
+        "vector": { "type": "string", "minLength": 1 },
+        "base_score": { "type": "number", "minimum": 0, "maximum": 10, "multipleOf": 0.1 },
+        "severity": { "type": "string", "enum": ["none", "low", "medium", "high", "critical"] }
+      },
+      "required": ["version", "vector", "base_score", "severity"]
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "verification_status",
+    "title",
+    "severity",
+    "url",
+    "method",
+    "response_excerpt",
+    "impact",
+    "retest_steps",
+    "created_at"
+  ]
+}
