@@ -306,7 +306,7 @@ export interface BuildOptions {
   memory?: SessionMemory | null;
   /**
    * Operator-authored engagement notes (scope, rules, credential placeholders,
-   * standing objectives). Loaded from .pentesterflow/engagement.md and always
+   * standing objectives). Loaded from .hackerclaw/engagement.md and always
    * injected — transcript-independent, so it survives compaction unconditionally.
    */
   engagement?: string;

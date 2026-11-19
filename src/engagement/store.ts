@@ -6,14 +6,15 @@
 // objectives the operator wants enforced on every turn.
 //
 // Two scopes are read and concatenated (mirrors IntelligenceStore):
-//   - project: ./.pentesterflow/engagement.md   (this engagement)
-//   - personal: ~/.pentesterflow/engagement.md  (defaults across engagements)
+//   - project: ./.hackerclaw/engagement.md   (this engagement)
+//   - personal: ~/.hackerclaw/engagement.md  (defaults across engagements)
 // Personal notes come first (general defaults), project notes last so the
 // most specific context is nearest the end of the block.
 
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { projectStateDir, userStateDir } from '../config/paths.js';
 
 // Hard cap on the combined notes so a runaway file can't dominate the prompt.
 // Engagement notes are meant to be concise; anything past this is truncated
@@ -32,8 +33,8 @@ export class EngagementStore {
   constructor(opts: EngagementStoreOptions = {}) {
     const cwd = resolve(opts.cwd ?? process.cwd());
     const home = opts.home ?? homedir();
-    this.projectPath = join(cwd, '.pentesterflow', 'engagement.md');
-    this.personalPath = join(home, '.pentesterflow', 'engagement.md');
+    this.projectPath = join(projectStateDir(cwd), 'engagement.md');
+    this.personalPath = join(userStateDir(home), 'engagement.md');
   }
 
   /**

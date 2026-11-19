@@ -27,6 +27,7 @@ const HOME_RELATIVE = [
   '.docker',
   '.config/gcloud',
   '.config/op',
+  '.hackerclaw',
   '.pentesterflow',
   '.netrc',
   '.pgpass',

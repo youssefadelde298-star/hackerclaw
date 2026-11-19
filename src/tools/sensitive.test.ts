@@ -13,6 +13,8 @@ describe('isSensitivePath', () => {
     { path: join(home, '.aws', 'credentials'), want: true },
     { path: join(home, '.kube', 'config'), want: true },
     { path: join(home, '.bash_history'), want: true },
+    { path: join(home, '.hackerclaw', 'config.json'), want: true },
+    { path: join(home, '.pentesterflow', 'config.json'), want: true },
     { path: '/etc/shadow', want: true },
     { path: '/etc/sudoers', want: true },
 

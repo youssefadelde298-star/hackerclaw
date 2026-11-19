@@ -1,4 +1,4 @@
-// browser_capture_* tools. Surface traffic the PentesterFlow Chrome
+// browser_capture_* tools. Surface traffic the HackerClaw Chrome
 // extension forwards to the local ingest server. The agent uses these to
 // reason about the target's surface, replay interesting requests, and
 // reuse captured session cookies / storage.

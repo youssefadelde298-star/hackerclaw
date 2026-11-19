@@ -1,4 +1,11 @@
+// Moonshot runs two SEPARATE platforms with separate accounts, keys and
+// endpoints. A key issued on platform.moonshot.ai (international) is rejected
+// by the .cn host and vice-versa — this is the single most common cause of a
+// Kimi key that "doesn't work". We default to the international endpoint and
+// expose the China one as an override (config base_url, or MOONSHOT_BASE_URL /
+// KIMI_BASE_URL env — see cli/index.ts).
 export const KIMI_DEFAULT_BASE_URL = 'https://api.moonshot.ai/v1';
+export const KIMI_CN_BASE_URL = 'https://api.moonshot.cn/v1';
 export const KIMI_DEFAULT_MODEL = 'kimi-k2.6';
 export const KIMI_MODELS = [
   'kimi-k2.7-code',
@@ -95,6 +102,16 @@ export const DEEPSEEK_MODELS = [
   'deepseek-chat',
   'deepseek-reasoner',
 ];
+
+// Zhipu AI / Z.ai GLM — OpenAI-compatible Chat Completions API, so it rides
+// the OpenAIClient like Kimi/DeepSeek. GLM-4.6 is a strong tool-caller and the
+// recommended choice for the agent loop. Like Moonshot, Zhipu runs two
+// regions: Z.ai (international, default below) and open.bigmodel.cn (China) —
+// override with config base_url or ZHIPU_BASE_URL / GLM_BASE_URL env.
+export const GLM_DEFAULT_BASE_URL = 'https://api.z.ai/api/paas/v4';
+export const GLM_CN_BASE_URL = 'https://open.bigmodel.cn/api/paas/v4';
+export const GLM_DEFAULT_MODEL = 'glm-4.6';
+export const GLM_MODELS = ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-flash', 'glm-4-plus'];
 
 // Anthropic Claude (Messages API). Base URL includes the /v1 prefix so the
 // client builds <base>/messages and the model-list probe hits <base>/models,

@@ -6,25 +6,13 @@ file with YAML frontmatter and a Markdown body.
 
 ```
 skills/
-  jwt/
-    SKILL.md
-    payloads/
-      alg-none-variants.txt
-  path-traversal/
-    SKILL.md
-  file-upload/
-    SKILL.md
-    payloads/
-      benign-text-canary.txt
-  sqli/
-    SKILL.md
-    payloads/
-      lab-cases.txt
-  ssrf/
-    SKILL.md
-    payloads/
-      lab-canary-requirements.txt
+  _template/ · csrf/ · deserialize/ · file-upload/ · graphql/ · jwt/
+  path-traversal/ · race/ · recon/ · session-fixation/ · session-hijacking/
+  sqli/ · ssrf/ · ssti/ · supabase/ · takeover/ · webvuln/
+  week3-evidence-review/ · xss/
 ```
+
+Some skills include auxiliary files under `payloads/` or a lab-cases file; those files contain the documented, scoped fixtures for that skill.
 
 ## SKILL.md frontmatter
 
@@ -45,14 +33,17 @@ Discovered automatically, in increasing precedence (later overrides earlier
 on a name collision):
 
 1. this built-in `skills/` directory
-2. `./.pentesterflow/skills/` (project-local — scoped to the repo)
-3. `~/.pentesterflow/builtin-skills/` (installer-managed shipped skills)
-4. `~/.pentesterflow/skills/` (personal)
+2. `./.hackerclaw/skills/` (project-local — scoped to the repo)
+3. `~/.hackerclaw/builtin-skills/` (installer-managed shipped skills)
+4. `~/.hackerclaw/skills/` (personal)
 5. any dirs passed via `--skills <dir>` or the `skills_dirs` config
 
-Use `~/.pentesterflow/skills/` for personal skills you want available
-everywhere, or the project-local `./.pentesterflow/skills/` for skills
+Use `~/.hackerclaw/skills/` for personal skills you want available
+everywhere, or the project-local `./.hackerclaw/skills/` for skills
 scoped to a single repo.
+
+On first use, legacy `.pentesterflow` skill files are copied only when the
+matching `.hackerclaw` file does not exist; the legacy tree is left untouched.
 
 Just drop a `<name>/SKILL.md` into one of these — no config needed. Skills
 **hot-reload** on save. Directories starting with `.` or `_` are ignored
@@ -61,7 +52,7 @@ Just drop a `<name>/SKILL.md` into one of these — no config needed. Skills
 ## Creating a skill
 
 - **Scaffold:** run `/skills new <name>` in the TUI — it writes a templated
-  `./.pentesterflow/skills/<name>/SKILL.md` and loads it immediately.
+  `./.hackerclaw/skills/<name>/SKILL.md` and loads it immediately.
 - **By hand:** copy [`_template/SKILL.md`](_template/SKILL.md) into
   `<name>/SKILL.md` and edit.
 
@@ -77,3 +68,8 @@ All shipped skills are validated by `src/skills/conformance.test.ts`
 ## Test fixture safety
 
 Payload files are read-only references, not an instruction to send requests. The Member 3 bundle uses a plain-text canary and lab-scope checklists; it does not ship path-bypass strings, internal SSRF destinations, data-extraction probes, or active upload files. Runtime checks require an explicitly authorized lab and human review.
+
+CSRF, XSS, and session playbooks are also limited to tester-owned training accounts and inert or metadata-only checks. They intentionally omit cross-user actions, token/session replay, and bypass procedures.
+
+The Member 6 CSRF, session-fixation, session-hijacking, and XSS playbooks are covered by
+`src/skills/member6.test.ts` and the shared conformance test.

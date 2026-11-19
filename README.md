@@ -13,7 +13,7 @@
 ## Requirements
 
 - **Node.js 20+** — https://nodejs.org
-- **Bun** — https://bun.sh  (used to build the terminal UI)
+- **Bun** — https://bun.sh (needed to compile standalone binaries; source checks use npm)
 - **A model backend**, either:
   - **Ollama** (local, free) — https://ollama.com, or
   - a cloud API key (OpenRouter / OpenAI-compatible / Groq / Gemini / DeepSeek …)
@@ -39,6 +39,23 @@ bun build src/cli/index.ts --compile --outfile hackerclaw
 ```
 
 Optionally move the resulting binary somewhere on your `PATH` so you can call `hackerclaw` from anywhere.
+
+For the Node.js package build, install the locked dependencies and run its built-output smoke checks:
+
+```bash
+npm ci
+npm run build
+npm run smoke:build
+```
+
+`npm run ci` runs typecheck, lint, tests, build, and both built-entry-point runtime checks.
+
+## Local data
+
+Personal configuration and data live under `~/.hackerclaw/`; project-local skills and memory
+live under `./.hackerclaw/`. On first use, existing `.pentesterflow` files are copied only when
+the corresponding new file is missing. The old directories are not removed, and
+`HACKERCLAW_CONFIG` takes precedence; `PENTESTERFLOW_CONFIG` remains supported as a legacy alias.
 
 ## Run
 
@@ -93,6 +110,12 @@ under `cvss`, as defined in `schemas/finding-v1.schema.json`. It does not guess 
 or business impact. Temporal and Environmental metrics are not included. The report keeps
 unverified items separate from confirmed findings, and only `human_verified` records appear in
 its executive summary.
+
+## Project deliverables
+
+The proposal's five-week deliverables, current status, and blank team templates are indexed in
+the [Arabic project handoff](docs/README-ar.md). The guides distinguish tested code from work that
+still requires the team's authorized lab, hardware, and evidence; blank templates are not results.
 
 ---
 

@@ -1,17 +1,21 @@
-# PentesterFlow — Complete Project Documentation
+# HackerClaw — Project Technical Documentation
 
-> **`@pentesterflow/agent`** — Human-in-the-loop agentic AI CLI for penetration testers
+> **`@hackerclaw/agent`** — Human-in-the-loop agentic AI CLI for penetration testers
 > and bug hunters. An open-source terminal assistant for *authorized* offensive-security
 > work that connects to local or hosted LLMs, plans against a scoped target, runs real
 > pentesting tools behind permission gates, remembers lessons across sessions, and writes
 > evidence-backed findings.
 
-- **Package:** `@pentesterflow/agent` · version `0.1.0-dev`
+- **Package:** `@hackerclaw/agent` · version `0.1.0-dev`
 - **License:** Apache-2.0 · **Node:** `>=20`
-- **Language:** TypeScript (ESM) · ~24,000 LOC across 143 source files · 57 test files
+- **Language:** TypeScript (ESM) · 68 test files and 695 passing tests in the 2026-11-18 Linux/Node 22 verification
 - **Runtime UI:** Ink (React for the terminal)
-- **Binaries:** `pentesterflow` (the CLI) and `pentesterflow-browser-mcp` (capture MCP server)
-- **Repo homepage:** https://github.com/pentesterflow/agent
+- **Binaries:** `hackerclaw` (the CLI) and `hackerclaw-browser-mcp` (capture MCP server)
+- **Repo homepage:** https://github.com/youssefadelde298-star/hackerclaw
+- **Legacy compatibility:** `PENTESTERFLOW_*` variables and `.pentesterflow` data are accepted
+  during migration. New settings and state use `HACKERCLAW_*` and `.hackerclaw`; old trees are
+  copied only where destinations are missing and are never removed.
+- **Weekly project handoff:** see [`docs/README-ar.md`](docs/README-ar.md).
 
 ---
 
@@ -39,7 +43,7 @@
 
 ## 1. What it is & design philosophy
 
-PentesterFlow assists across the full pentest lifecycle — **scope → recon → enumeration →
+HackerClaw assists across the full pentest lifecycle — **scope → recon → enumeration →
 validation → coverage → reporting → learning** — while keeping the analyst in control.
 
 It is built around three ideas:
@@ -100,7 +104,7 @@ Ink app.
 **Key dependencies:** `ink` + `react` (TUI), `@modelcontextprotocol/sdk` (MCP), `undici`
 (HTTP with custom TLS dispatcher), `zod` (config/schema validation), `zustand` (state stores),
 `gray-matter` (SKILL.md frontmatter), `marked`/`marked-terminal`/`cli-highlight` (markdown
-rendering), `pino` (logging), `execa` (subprocess), `fast-glob` (search),
+rendering), `pino` (logging), `execa` (subprocess), `glob@14` (search),
 `write-file-atomic` (crash-safe writes), `chalk` (colors).
 
 ---
@@ -149,7 +153,7 @@ rendering), `pino` (logging), `execa` (subprocess), `fast-glob` (search),
 19. **Mount the Ink app** (`render(<App .../>)`), wiring publisher bridges, `applyProvider`
     (live `/provider` + `/model` swaps re-probe), `startBurpBridge`, etc.
 20. **On exit**, trip the root abort, close watchers, MCP sessions, and the Burp bridge; print
-    a `pentesterflow --resume <id>` hint.
+    a `hackerclaw --resume <id>` hint.
 
 **Provider helper functions** in this file map backends to labels, default endpoints, locality
 (local vs remote), the effective auto-compact threshold (Groq caps at 5500, Kimi sizes to its
@@ -244,7 +248,7 @@ yields a tool-result error (not a throw) so the model can self-correct.
 
 ## 5. LLM providers
 
-`src/llm/` abstracts 8 backends behind a small `Client` interface.
+`src/llm/` abstracts 9 backends behind a small `Client` interface.
 
 ### Interfaces (`client.ts`, `types.ts`)
 
@@ -277,6 +281,7 @@ applies per-provider defaults, and enforces required fields (API keys, base URLs
 | `openrouter` | `https://openrouter.ai/api/v1` | `openrouter/auto` | extra `HTTP-Referer`/title headers |
 | `deepseek` | `https://api.deepseek.com` | `deepseek-v4-flash` | |
 | `gemini` | `https://generativelanguage.googleapis.com/v1beta` | `models/gemini-3.5-flash` | key as query param, non-streaming |
+| `anthropic` | `https://api.anthropic.com/v1` | `claude-opus-4-8` | Messages API; `x-api-key` + version header; `max_tokens` required |
 
 ### Provider implementations
 
@@ -345,7 +350,7 @@ ranges, or localhost names.
 
 **Sensitive paths** (`sensitive.ts`) — `/etc/shadow`, `/etc/sudoers`, `master.passwd`, and
 home-relative `.ssh`, `.aws`, `.gnupg`, `.gcloud`, `.kube`, `.docker`, `.config/gcloud`,
-`.config/op`, `.netrc`, `.pgpass`, `.npmrc`, `.pypirc`, `.pentesterflow`, and shell/REPL
+`.config/op`, `.netrc`, `.pgpass`, `.npmrc`, `.pypirc`, `.hackerclaw`, `.pentesterflow`, and shell/REPL
 histories (`.bash_history`, `.zsh_history`, `.python_history`, `.mysql_history`,
 `.psql_history`). Checked by exact match **or** directory prefix (so `.ssh_other` does *not*
 match `.ssh`), against both lexical and symlink-resolved real paths.
@@ -397,9 +402,9 @@ disable-model-invocation: false   # optional — true = only reachable via /skil
 **Discovery order** (later wins on name collision):
 
 1. Built-in `skills/` (shipped)
-2. Project-local `./.pentesterflow/skills/`
-3. `~/.pentesterflow/builtin-skills/` (installer-managed)
-4. Personal `~/.pentesterflow/skills/`
+2. Project-local `./.hackerclaw/skills/`
+3. `~/.hackerclaw/builtin-skills/` (installer-managed)
+4. Personal `~/.hackerclaw/skills/`
 5. `--skills <dirs>` / config `skills_dirs`
 
 Dotfiles and `_`-prefixed dirs (e.g. `_template/`) are skipped. The `Registry` tracks
@@ -407,8 +412,9 @@ enabled/disabled state (persisted as `disabled_skills`); disabled skills stay li
 but are hidden from the system prompt and refused by `load_skill`. `LoadSkillTool` validates +
 materializes a skill's body. Live reload re-walks dirs on file change.
 
-**Built-in skills:** `recon`, `webvuln`, `ssrf`, `ssti`, `jwt`, `graphql`, `race`, `takeover`,
-`supabase`, `deserialize` (+ `_template` scaffold and a `README.md`). Each packages methodology,
+**Built-in skills:** `recon`, `webvuln`, `week3-evidence-review`, `sqli`, `ssrf`, `ssti`, `jwt`, `graphql`, `race`,
+`takeover`, `supabase`, `deserialize`, `path-traversal`, `file-upload`, `csrf`, `xss`,
+`session-fixation`, `session-hijacking` (+ `_template` scaffold and a `README.md`). Each packages methodology,
 payloads, constraints, and curl-first discipline ("real PoC + concrete impact, no theoretical
 bugs"). Supporting files: `discovery.ts`, `loadSkill.ts`, `registry.ts`, `template.ts`
 (scaffolding for `/skills new`), `validate.ts` (frontmatter validation + conformance tests).
@@ -419,7 +425,7 @@ bugs"). Supporting files: `discovery.ts`, `loadSkill.ts`, `registry.ts`, `templa
 
 ### Sessions (`src/session/store.ts`)
 
-Saved to `~/.pentesterflow/sessions/<uuid>.json`:
+Saved to `~/.hackerclaw/sessions/<uuid>.json`:
 
 ```jsonc
 {
@@ -434,7 +440,7 @@ Saved to `~/.pentesterflow/sessions/<uuid>.json`:
 
 Crash-safe atomic writes (`*.tmp.<hex>` → fsync → rename); stale temps > 1 min cleaned at
 startup; corrupt files skipped on listing. `--resume <id>` reloads messages/target/memory and
-shows a recap. 5-minute automatic context snapshots go to `~/.pentesterflow/context/*.md`
+shows a recap. 5-minute automatic context snapshots go to `~/.hackerclaw/context/*.md`
 (redacted).
 
 ### Continuous learning (`src/intelligence/store.ts`)
@@ -442,8 +448,8 @@ shows a recap. 5-minute automatic context snapshots go to `~/.pentesterflow/cont
 A local **Continuous Learning System** that improves future sessions with no retraining.
 Scenarios stored as JSONL:
 
-- **Project scope:** `./.pentesterflow/intelligence/scenarios.jsonl`
-- **Personal scope:** `~/.pentesterflow/intelligence/scenarios.jsonl`
+- **Project scope:** `./.hackerclaw/intelligence/scenarios.jsonl`
+- **Personal scope:** `~/.hackerclaw/intelligence/scenarios.jsonl`
 - Plus a small hardcoded builtin seed.
 
 Each `IntelligenceScenario` = `{ id, title, category, triggers[], technologies[], lesson,
@@ -497,11 +503,12 @@ executive summary; missing business impact, CVSS, scope, and dates remain explic
 - **`BurpTask`** / **`BurpIssue`** — bounded arrays (1000 each).
 
 **Ingest server** (`server.ts`) — binds `127.0.0.1` only; auth via timing-safe
-`X-Pentesterflow-Token`; CORS limited to `chrome-extension://`; endpoints
+`X-HackerClaw-Token` (legacy `X-Pentesterflow-Token` is also accepted); CORS allows both header
+names for `chrome-extension://`; endpoints
 `POST /ingest|/snapshot|/burp/task|/burp/issues`, `GET /status|/endpoints|/requests|/burp/*`,
 `DELETE /clear`; 4 MiB body cap. Started by `--burp [port]` (default 9999) or `/burp`.
 
-**Standalone MCP server** (`mcpServer.ts` → `pentesterflow-browser-mcp` binary) exposes the same
+**Standalone MCP server** (`mcpServer.ts` → `hackerclaw-browser-mcp` binary) exposes the same
 capture data to any MCP client (`--port`, `--max-entries`, `--log`). The companion **Burp
 plugin** lives in `burp-plugin/pentesterflow_burp.py`: send selected Burp requests into the CLI,
 queue scan tasks, and import confirmed findings back into Burp as issues.
@@ -542,7 +549,8 @@ bridges.
 
 ## 13. Configuration & data paths
 
-**Config** `~/.pentesterflow/config.json` (override via `PENTESTERFLOW_CONFIG`). Zod-validated
+**Config** `~/.hackerclaw/config.json` (override via `HACKERCLAW_CONFIG`; legacy
+`PENTESTERFLOW_CONFIG` remains supported). Zod-validated
 schema (`ConfigSchema`): `backend` (default `''`), `model`, `base_url`, `api_key`,
 `skills_dirs[]`, `disabled_skills[]`, `mcp_servers[]` (`{name, command, args[], env?}`),
 `plugins[]` (`{name, command, args[], description, schema?, requires_permission}`),
@@ -555,25 +563,30 @@ defaults are used.
 
 > **Runtime artifacts in the working directory.** A live engagement directory also accumulates
 > non-source data the agent produces: `./findings/*.md` + `coverage-*.json`,
-> `./.pentesterflow/intelligence/scenarios.jsonl`, and any analyst-created recon/loot folders
+> `./.hackerclaw/intelligence/scenarios.jsonl`, and any analyst-created recon/loot folders
 > (e.g. `recon/`, `pivot/`). These are *outputs*, not part of the codebase, and are git-ignored
 > or treated as engagement data.
 
 | Path | Contents |
 |---|---|
-| `~/.pentesterflow/config.json` | Backend/model/endpoint/disabled-skill settings |
-| `~/.pentesterflow/sessions/*.json` | Saved sessions for `--resume` |
-| `~/.pentesterflow/context/*.md` | Redacted context snapshots (5-min auto) |
-| `./.pentesterflow/intelligence/scenarios.jsonl` | Project intelligence |
-| `~/.pentesterflow/intelligence/scenarios.jsonl` | Personal reusable intelligence |
-| `~/.pentesterflow/builtin-skills/<name>/SKILL.md` | Installer-managed shipped skills |
-| `~/.pentesterflow/skills/<name>/SKILL.md` | Personal skills |
-| `./.pentesterflow/skills/<name>/SKILL.md` | Project-local skills |
+| `~/.hackerclaw/config.json` | Backend/model/endpoint/disabled-skill settings |
+| `~/.hackerclaw/sessions/*.json` | Saved sessions for `--resume` |
+| `~/.hackerclaw/context/*.md` | Redacted context snapshots (5-min auto) |
+| `./.hackerclaw/intelligence/scenarios.jsonl` | Project intelligence |
+| `~/.hackerclaw/intelligence/scenarios.jsonl` | Personal reusable intelligence |
+| `~/.hackerclaw/builtin-skills/<name>/SKILL.md` | Installer-managed shipped skills |
+| `~/.hackerclaw/skills/<name>/SKILL.md` | Personal skills |
+| `./.hackerclaw/skills/<name>/SKILL.md` | Project-local skills |
 | `./findings/<slug>.md` | Confirmed findings |
 | `./findings/coverage-<session-id>.json` | Coverage state |
 | `./reports/` | Local initial reports and risk-register CSVs |
-| `~/.pentesterflow/logs/pentesterflow.log` | JSON-lines logs (rotates at 4 MB) |
-| `~/.pentesterflow/debug/session-*.jsonl` | Opt-in full session debug logs |
+| `~/.hackerclaw/logs/hackerclaw.log` | JSON-lines logs (rotates at 4 MB) |
+| `~/.hackerclaw/debug/session-*.jsonl` | Opt-in full session debug logs |
+
+On first use, the directory structure and regular files under legacy `.pentesterflow` trees
+are copied into matching `.hackerclaw` paths; files are copied only when the destination is
+absent. Symlinks and special files are skipped, and the legacy tree is retained unchanged as a
+fallback/archive.
 
 ---
 
@@ -586,13 +599,14 @@ defaults are used.
   first/last 2 chars.
 - **Permission** (`src/permission/permission.ts`) — `Prompter` interface, `Request`/`Decision`
   types, `YoloPrompter`.
-- **Logging** (`src/logger/`) — pino JSON-lines to `~/.pentesterflow/logs/pentesterflow.log`
+- **Logging** (`src/logger/`) — pino JSON-lines to `~/.hackerclaw/logs/hackerclaw.log`
   (4 MB rotation); optional `sessionDebug` JSONL (`--debug-session`).
 - **Target** (`src/target/target.ts`) — `{ baseURL, name }` shared by the HTTP tool and system
   prompt; `/target` updates propagate live.
 - **Self-update** (`src/update/selfUpdate.ts`) — `/update [version]` runs the GitHub
-  `install.sh`/`install.ps1` (5-min timeout); repo via `PENTESTERFLOW_REPO`.
-- **Version** (`src/version/version.ts`) — `VERSION` baked at build via tsup
+  `install.sh`/`install.ps1` (5-min timeout); repo via `HACKERCLAW_REPO` (`PENTESTERFLOW_REPO`
+  remains a fallback).
+- **Version** (`src/version/version.ts`) — `VERSION` baked at build via esbuild
   `define __BUILD_VERSION__` (fallback `dev`).
 
 ---
@@ -643,18 +657,20 @@ Ctrl-F cycle transcript filter · mouse-wheel scroll · Tab complete (slash/ment
 
 ## 16. Build, test & developer workflow
 
-- **Build:** `tsup` → ESM bundle to `dist/` (`cli.js`, `browser-mcp.js`), Node 20 target,
-  version baked in, shebang banner; externals: `react-devtools-core`, `yoga-wasm-web`,
-  `bufferutil`, `utf-8-validate`.
+- **Build:** `scripts/build.mjs` bundles the application entries as Node 20 ESM in `dist/`
+  (`cli.js`, `browser-mcp.js`) while leaving npm packages to Node's native loader. The build
+  injects the package version and a shebang banner.
 - **Type-check:** `tsc --noEmit` (strict, `noUncheckedIndexedAccess`, `noImplicitOverride`,
   `noFallthroughCasesInSwitch`).
 - **Lint/format:** Biome (2-space, 100-col, LF, organize-imports, `useNodejsImportProtocol`).
-- **Test:** Vitest (`src/**/*.test.{ts,tsx}`, node env) — **57 test files** including a local
-  `testServer.ts`, conformance tests for skills, and `ink-testing-library` UI tests.
-- **Scripts:** `npm run dev[:burp]` (tsx), `build`, `test[:watch]`, `typecheck`, `lint[:fix]`,
-  and `ci` = typecheck + lint + test + build.
-- **CI** (`.github/workflows/ci.yml`): matrix over ubuntu/macos × Node 20/22 running
-  typecheck → lint → test → build. `release.yml` builds/publishes binaries.
+- **Test:** Vitest (`src/**/*.test.{ts,tsx}`, node env) — **68 test files and 695 passing tests**
+  in the 2026-11-18 verification, including a local `testServer.ts`, skill conformance tests,
+  and `ink-testing-library` UI tests.
+- **Scripts:** `npm run dev[:burp]` (tsx), `build`, `smoke:build`, `test[:watch]`, `typecheck`,
+  `lint[:fix]`, and `ci` = typecheck + lint + test + build + built-runtime smoke checks.
+- **CI** (`.github/workflows/ci.yml`): Ubuntu/macOS × Node 20/22 runs typecheck, lint, tests,
+  build, and runtime smoke checks; a separate Ubuntu/macOS/Windows job checks installer syntax.
+  `release.yml` builds/publishes binaries.
 - **Install:** `install.sh` / `install.ps1` download the standalone binary (Bun baseline
   runtime for older x86_64, no AVX2) and verify the published SHA-256.
 
@@ -668,8 +684,8 @@ src/
   agent/          agent.ts (loop), systemPrompt.ts, decisionPlanner.ts,
                   events.ts, mentions.ts, sanitize.ts
   llm/            factory.ts, client.ts, types.ts, providers.ts,
-                  ollama.ts, openai.ts, gemini.ts, models.ts,
-                  modelWarnings.ts, probe.ts, errors.ts, ids.ts, testServer.ts
+                  ollama.ts, openai.ts, anthropic.ts, gemini.ts, models.ts,
+                  retry.ts, modelWarnings.ts, probe.ts, errors.ts, ids.ts, testServer.ts
   tools/          registry.ts, types.ts, shell.ts, http.ts, file.ts,
                   search.ts, web.ts, finding.ts, coverage.ts, ask.ts,
                   mcp.ts, mcpServers.ts, plugin.ts, browserCapture.ts,
@@ -684,33 +700,30 @@ src/
                   menuWindow.ts, colorLevel.ts, usePing.ts
   skills/         registry.ts, discovery.ts, loadSkill.ts, template.ts, validate.ts
   session/        store.ts
+  engagement/     store.ts
   coverage/       store.ts
   findings/       store.ts, httpRequest.ts, cvss.ts, report.ts
   intelligence/   store.ts
   browser/        store.ts, server.ts, mcpServer.ts
-  config/         config.ts
+  config/         config.ts, paths.ts (legacy data migration)
   redact/         redact.ts, index.ts
   permission/     permission.ts
   logger/         logger.ts, sessionDebug.ts
   target/         target.ts
   update/         selfUpdate.ts
   version/        version.ts
-  ask/            ask.ts
-
-skills/           recon webvuln ssrf ssti jwt graphql race takeover
-                  supabase deserialize _template README.md
   ask/            ask.ts (AskPrompter interface satisfied by the TUI)
-
-skills/           recon webvuln ssrf ssti jwt graphql race takeover
-                  supabase deserialize _template README.md
+skills/           recon webvuln week3-evidence-review sqli ssrf ssti jwt graphql
+                  race takeover supabase deserialize path-traversal file-upload
+                  csrf xss session-fixation session-hijacking _template README.md
 burp-plugin/      pentesterflow_burp.py + README.md
-scripts/          build-binaries.sh (standalone-binary build)
+scripts/          build.mjs, smoke-build.mjs, build-binaries.sh
 install.sh / install.ps1   standalone-binary installers (verify SHA-256)
-assets/logo.png · tsup.config.ts / tsconfig.json / vitest.config.ts / biome.json
+assets/hackerclaw-logo.webp · tsconfig.json / vitest.config.ts / biome.json
 .github/workflows/  ci.yml, release.yml
 ```
 
 ---
 
-*Generated from a full read of the codebase. Cross-references: `README.md` (user-facing),
-`CHANGELOG.md` (history), `LICENSE` (Apache-2.0).*
+*Architecture reference. For current weekly status, validation results, and open project inputs, see
+[`docs/README-ar.md`](docs/README-ar.md). `package.json` is authoritative for current package metadata.*

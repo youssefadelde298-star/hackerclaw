@@ -1058,7 +1058,7 @@ describe('Agent.run', () => {
   });
 
   it('allows BashTool when the active skill declared "shell" (alias equivalence)', async () => {
-    // Regression for: pentesterflow registers shell + BashTool side-by-
+    // Regression for: HackerClaw registers shell + BashTool side-by-
     // side; some models reach for BashTool, but skill
     // authors write the Unix `shell` in their `tools:` list. The
     // enforcer canonicalizes both sides so the call goes through.

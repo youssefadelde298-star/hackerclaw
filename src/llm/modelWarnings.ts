@@ -15,7 +15,8 @@ export function modelReliabilityWarning(backend: Backend, model: string): string
       normalizedBackend === 'openrouter' ||
       normalizedBackend === 'deepseek' ||
       normalizedBackend === 'gemini' ||
-      normalizedBackend === 'anthropic') &&
+      normalizedBackend === 'anthropic' ||
+      normalizedBackend === 'glm') &&
     size < 70
   ) {
     return `⚠  model ${model}: if this is a hosted API, sub-70b models may be unreliable for agentic tool calls. Recommended hosted size: 70b+.`;

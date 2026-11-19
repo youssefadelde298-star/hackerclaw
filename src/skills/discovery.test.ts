@@ -9,18 +9,18 @@ describe('skillSearchDirs', () => {
     const dirs = skillSearchDirs(['/cfg/skills'], '/proj', '/home');
     expect(dirs).toEqual([
       resolve('/proj', 'skills'),
-      resolve('/proj', '.pentesterflow', 'skills'),
-      join('/home', '.pentesterflow', 'builtin-skills'),
-      join('/home', '.pentesterflow', 'skills'),
+      resolve('/proj', '.hackerclaw', 'skills'),
+      join('/home', '.hackerclaw', 'builtin-skills'),
+      join('/home', '.hackerclaw', 'skills'),
       resolve('/cfg/skills'),
     ]);
   });
 
   it('includes project-local, managed, and personal skill dirs', () => {
     const dirs = skillSearchDirs([], '/proj', '/home');
-    expect(dirs).toContain(resolve('/proj', '.pentesterflow', 'skills'));
-    expect(dirs).toContain(join('/home', '.pentesterflow', 'builtin-skills'));
-    expect(dirs).toContain(join('/home', '.pentesterflow', 'skills'));
+    expect(dirs).toContain(resolve('/proj', '.hackerclaw', 'skills'));
+    expect(dirs).toContain(join('/home', '.hackerclaw', 'builtin-skills'));
+    expect(dirs).toContain(join('/home', '.hackerclaw', 'skills'));
   });
 
   it('appends configured dirs last so they win on collision', () => {

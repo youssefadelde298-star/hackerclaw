@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSyn
 import { appendFile, chmod } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { projectStateDir, userStateDir } from '../config/paths.js';
 import { apply as redact } from '../redact/index.js';
 
 export type IntelligenceScope = 'project' | 'personal' | 'builtin';
@@ -97,8 +98,8 @@ export class IntelligenceStore {
   constructor(opts: StoreOptions = {}) {
     const cwd = resolve(opts.cwd ?? process.cwd());
     const home = opts.home ?? homedir();
-    this.projectPath = join(cwd, '.pentesterflow', 'intelligence', 'scenarios.jsonl');
-    this.personalPath = join(home, '.pentesterflow', 'intelligence', 'scenarios.jsonl');
+    this.projectPath = join(projectStateDir(cwd), 'intelligence', 'scenarios.jsonl');
+    this.personalPath = join(userStateDir(home), 'intelligence', 'scenarios.jsonl');
   }
 
   list(): IntelligenceScenario[] {

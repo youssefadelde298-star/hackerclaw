@@ -1,4 +1,4 @@
-// GlobTool + GrepTool. Glob uses fast-glob (handles ** and brace
+// GlobTool + GrepTool. Glob uses node-glob (handles ** and brace
 // expansion); grep walks matched files line-by-line and prints
 // path:line:match.
 
@@ -6,7 +6,7 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
-import fg from 'fast-glob';
+import { glob } from 'glob';
 import type { Prompter } from '../permission/permission.js';
 import { gateSensitivePath } from './file.js';
 import { type Tool, argBool, argNumber, argString } from './types.js';
@@ -146,23 +146,29 @@ async function globFiles(
   if (!info.isDirectory()) {
     const dir = dirname(absBase);
     const baseName = basename(absBase);
-    const matches = await fg(pattern, { cwd: dir, dot: true, onlyFiles: true });
+    const matches = await glob(pattern, {
+      cwd: dir,
+      dot: true,
+      nodir: true,
+      follow: false,
+      signal,
+    });
     return matches.some((m) => m === baseName || m.endsWith(`/${baseName}`)) ? [absBase] : [];
   }
 
-  const results = await fg(pattern, {
+  const results = await glob(pattern, {
     cwd: absBase,
     dot: true,
-    onlyFiles: true,
-    followSymbolicLinks: false,
-    suppressErrors: true,
+    nodir: true,
+    follow: false,
+    signal,
     ignore: Array.from(SKIP_DIR_NAMES).map((n) => `**/${n}/**`),
   });
   if (signal.aborted) throw new Error('aborted');
   return results
-    .slice(0, limit)
     .map((rel) => resolve(absBase, rel))
-    .sort();
+    .sort()
+    .slice(0, limit);
 }
 
 const GREP_CONCURRENCY = 8;
@@ -173,8 +179,8 @@ interface GlobEntry {
 }
 
 /**
- * Like globFiles but also returns each file's size (from fast-glob `stats:
- * true`), so GrepTool can gate on size without a second stat() per file.
+ * Like globFiles but also returns each file's size, so GrepTool can gate on
+ * size without a second stat() per file.
  * Sorted by absolute path for deterministic downstream ordering.
  */
 async function globEntries(
@@ -189,25 +195,32 @@ async function globEntries(
   if (!info.isDirectory()) {
     const dir = dirname(absBase);
     const baseName = basename(absBase);
-    const matches = await fg(pattern, { cwd: dir, dot: true, onlyFiles: true });
+    const matches = await glob(pattern, {
+      cwd: dir,
+      dot: true,
+      nodir: true,
+      follow: false,
+      signal,
+    });
     if (!matches.some((m) => m === baseName || m.endsWith(`/${baseName}`))) return [];
     return [{ path: absBase, size: info.size }];
   }
 
-  const results = (await fg(pattern, {
+  const results = await glob(pattern, {
     cwd: absBase,
     dot: true,
-    onlyFiles: true,
-    followSymbolicLinks: false,
-    suppressErrors: true,
-    stats: true,
+    nodir: true,
+    follow: false,
+    signal,
+    withFileTypes: true,
+    stat: true,
     ignore: Array.from(SKIP_DIR_NAMES).map((n) => `**/${n}/**`),
-  })) as unknown as Array<{ path: string; stats?: { size: number } }>;
+  });
   if (signal.aborted) throw new Error('aborted');
   return results
-    .slice(0, limit)
-    .map((e) => ({ path: resolve(absBase, e.path), size: e.stats?.size ?? 0 }))
-    .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+    .map((entry) => ({ path: resolve(absBase, entry.relative()), size: entry.size ?? 0 }))
+    .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+    .slice(0, limit);
 }
 
 /**

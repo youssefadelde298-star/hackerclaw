@@ -12,6 +12,8 @@ import {
   DEEPSEEK_MODELS,
   GEMINI_DEFAULT_BASE_URL,
   GEMINI_RECOMMENDED_MODELS,
+  GLM_DEFAULT_BASE_URL,
+  GLM_MODELS,
   GROQ_DEFAULT_BASE_URL,
   GROQ_MODELS,
   KIMI_DEFAULT_BASE_URL,
@@ -32,6 +34,7 @@ const DEFAULT_BASE_URL: Record<Exclude<Backend, ''>, string> = {
   deepseek: DEEPSEEK_DEFAULT_BASE_URL,
   gemini: GEMINI_DEFAULT_BASE_URL,
   anthropic: ANTHROPIC_DEFAULT_BASE_URL,
+  glm: GLM_DEFAULT_BASE_URL,
 };
 
 /**
@@ -129,6 +132,7 @@ function parseModels(backend: Exclude<Backend, ''>, body: unknown): string[] {
     return preferOpenRouterModels(ids);
   }
   if (backend === 'deepseek') return preferKnownModels(ids, DEEPSEEK_MODELS);
+  if (backend === 'glm') return preferKnownModels(ids, GLM_MODELS, { appendUnknown: true });
   if (backend === 'anthropic') {
     // Anthropic's /v1/models uses the same { data: [{ id }] } envelope; float
     // the known recommended ids to the top, keep any newer ones below.

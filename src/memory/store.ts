@@ -6,8 +6,8 @@
 // This layer is what the user reads, edits, and recalls.
 //
 // Two scopes (mirrors EngagementStore / IntelligenceStore):
-//   - project:  ./.pentesterflow/memory/   (this engagement; commit with it)
-//   - personal: ~/.pentesterflow/memory/   (habits/preferences across engagements)
+//   - project:  ./.hackerclaw/memory/   (this engagement; commit with it)
+//   - personal: ~/.hackerclaw/memory/   (habits/preferences across engagements)
 //
 // "Don't forget mid-session" is enforced by the agent, not here: the index()
 // rides in the system prompt on every request (survives compaction) and
@@ -27,6 +27,7 @@ import {
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import matter from 'gray-matter';
+import { projectStateDir, userStateDir } from '../config/paths.js';
 import { apply as redact } from '../redact/index.js';
 
 // Recency boost: at equal token overlap a fresher fact outranks a stale one by
@@ -83,8 +84,8 @@ export class MemoryStore {
   constructor(opts: MemoryStoreOptions = {}) {
     const cwd = resolve(opts.cwd ?? process.cwd());
     const home = opts.home ?? homedir();
-    this.projectDir = join(cwd, '.pentesterflow', 'memory');
-    this.personalDir = join(home, '.pentesterflow', 'memory');
+    this.projectDir = join(projectStateDir(cwd), 'memory');
+    this.personalDir = join(userStateDir(home), 'memory');
   }
 
   private dir(scope: MemoryScope): string {

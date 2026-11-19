@@ -6,26 +6,41 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { defaultConfig, load, save } from './config.js';
+import { configPath, defaultConfig, load, save } from './config.js';
 
 let tmp = '';
-const originalEnv = process.env.PENTESTERFLOW_CONFIG;
+const originalConfigEnv = process.env.HACKERCLAW_CONFIG;
+const originalLegacyConfigEnv = process.env.PENTESTERFLOW_CONFIG;
+
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+}
 
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), 'pf-config-'));
-  process.env.PENTESTERFLOW_CONFIG = join(tmp, 'config.json');
+  process.env.HACKERCLAW_CONFIG = join(tmp, 'config.json');
+  process.env.PENTESTERFLOW_CONFIG = '';
 });
 
 afterEach(() => {
   rmSync(tmp, { recursive: true, force: true });
-  if (originalEnv === undefined) {
-    process.env.PENTESTERFLOW_CONFIG = undefined;
-  } else {
-    process.env.PENTESTERFLOW_CONFIG = originalEnv;
-  }
+  restoreEnv('HACKERCLAW_CONFIG', originalConfigEnv);
+  restoreEnv('PENTESTERFLOW_CONFIG', originalLegacyConfigEnv);
 });
 
 describe('config', () => {
+  it('prefers HACKERCLAW_CONFIG and retains the legacy override as a fallback', () => {
+    const current = join(tmp, 'current.json');
+    const legacy = join(tmp, 'legacy.json');
+    process.env.HACKERCLAW_CONFIG = current;
+    process.env.PENTESTERFLOW_CONFIG = legacy;
+    expect(configPath()).toBe(current);
+
+    process.env.HACKERCLAW_CONFIG = '';
+    expect(configPath()).toBe(legacy);
+  });
+
   it('returns a default config when the file is missing', () => {
     const cfg = load();
     expect(cfg.backend).toBe('');
@@ -133,7 +148,7 @@ describe('config', () => {
     cfg.backend = 'ollama';
     await save(cfg);
     const { statSync } = await import('node:fs');
-    const file = statSync(process.env.PENTESTERFLOW_CONFIG ?? '');
+    const file = statSync(process.env.HACKERCLAW_CONFIG ?? '');
     if (process.platform === 'win32') {
       // Windows ACLs do not expose POSIX 0o600 mode bits through stat().
       expect(file.isFile()).toBe(true);

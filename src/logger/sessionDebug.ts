@@ -1,7 +1,7 @@
 import { appendFileSync, mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { AgentEvent } from '../agent/events.js';
+import { userStateDir } from '../config/paths.js';
 import { apply as redact } from '../redact/index.js';
 
 /**
@@ -75,10 +75,8 @@ export const disabledSessionDebugLog: SessionDebugLog = {
 };
 
 function defaultDebugPath(sessionID: string): string | undefined {
-  const home = homedir();
-  if (!home) return undefined;
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  return join(home, '.pentesterflow', 'debug', `session-${sessionID}-${stamp}.jsonl`);
+  return join(userStateDir(), 'debug', `session-${sessionID}-${stamp}.jsonl`);
 }
 
 function serializeAgentEvent(ev: AgentEvent): Record<string, unknown> {

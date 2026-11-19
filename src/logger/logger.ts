@@ -1,6 +1,6 @@
 // File-only structured logger.: writes JSON lines
-// to ~/.pentesterflow/logs/pentesterflow.log, never to stdout/stderr (the
-// TUI owns those), rotates at 4 MB by keeping pentesterflow.log.1.
+// to ~/.hackerclaw/logs/hackerclaw.log, never to stdout/stderr (the
+// TUI owns those), rotates at 4 MB by keeping hackerclaw.log.1.
 //
 // pino under the hood. Default logger is no-op so callers don't need to
 // error-handle setup.
@@ -10,9 +10,9 @@
 // (up to .3) via maybeRotate() + open(). Long sessions stay bounded.
 
 import { existsSync, mkdirSync, renameSync, statSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import pino, { type Logger } from 'pino';
+import { userStateDir } from '../config/paths.js';
 
 const MAX_LOG_BYTES = 4 * 1024 * 1024;
 const MAX_LOG_GENERATIONS = 3;
@@ -28,7 +28,7 @@ let writesSinceCheck = 0;
 /**
  * Initialise the logger. Opens or creates the log file at `path` and
  * installs a pino logger that writes to it. If `path` is empty, defaults
- * to `~/.pentesterflow/logs/pentesterflow.log`. On any setup error the
+ * to `~/.hackerclaw/logs/hackerclaw.log`. On any setup error the
  * logger stays disabled so the caller doesn't need to error-handle.
  */
 export function init(path?: string): void {
@@ -52,7 +52,7 @@ function open(target: string): void {
       {
         base: { pid: process.pid },
         timestamp: pino.stdTimeFunctions.isoTime,
-        level: process.env.PENTESTERFLOW_LOG_LEVEL ?? 'info',
+        level: process.env.HACKERCLAW_LOG_LEVEL ?? process.env.PENTESTERFLOW_LOG_LEVEL ?? 'info',
       },
       stream,
     );
@@ -73,9 +73,7 @@ function open(target: string): void {
 }
 
 function defaultLogPath(): string | undefined {
-  const home = homedir();
-  if (!home) return undefined;
-  return join(home, '.pentesterflow', 'logs', 'pentesterflow.log');
+  return join(userStateDir(), 'logs', 'hackerclaw.log');
 }
 
 function rotateIfTooBig(path: string): void {

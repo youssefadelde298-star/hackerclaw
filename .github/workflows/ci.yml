@@ -23,3 +23,30 @@ jobs:
       - run: npm run lint
       - run: npm run test
       - run: npm run build
+      - run: npm run smoke:build
+
+  installer-syntax:
+    name: installer syntax (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Unix installer scripts
+        if: runner.os != 'Windows'
+        run: |
+          sh -n install.sh
+          bash -n scripts/build-binaries.sh
+      - name: Parse PowerShell installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'install.ps1').Path, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }

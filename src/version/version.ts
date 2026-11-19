@@ -1,4 +1,4 @@
-// Version is injected by tsup at build time via `--define`. For dev runs
+// Version is injected by esbuild at build time via `define`. For dev runs
 // (`tsx src/cli/index.ts`) it falls back to 'dev'. The version string appears in /settings, the
 // banner, and logs.
 

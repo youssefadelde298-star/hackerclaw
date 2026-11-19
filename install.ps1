@@ -1,30 +1,37 @@
 <#
 .SYNOPSIS
-  pentesterflow online installer (Windows).
+  HackerClaw online installer (Windows).
 
 .DESCRIPTION
   Downloads the standalone Windows binary from the latest GitHub release,
-  verifies its SHA-256, installs it under %LOCALAPPDATA%\Programs\pentesterflow,
+  verifies its SHA-256, installs it under %LOCALAPPDATA%\Programs\HackerClaw,
   and adds that directory to your user PATH.
 
   Run:
-    irm https://raw.githubusercontent.com/PentesterFlow/agent/main/install.ps1 | iex
+    irm https://raw.githubusercontent.com/youssefadelde298-star/hackerclaw/main/install.ps1 | iex
 
 .NOTES
   Environment overrides:
-    $env:PENTESTERFLOW_VERSION     = 'v0.1.0'   # pin a release (default: latest)
-    $env:PENTESTERFLOW_INSTALL_DIR = 'C:\path'  # install location
-    $env:PENTESTERFLOW_SKILLS_DIR  = 'C:\path'  # shipped skills location
-    $env:PENTESTERFLOW_SKIP_SKILLS = '1'        # install binary only
-    $env:PENTESTERFLOW_SKIP_CHECKSUM = '1'      # install without SHA-256 verification (unsafe)
-    $env:PENTESTERFLOW_REPO        = 'owner/repo'
+    $env:HACKERCLAW_VERSION        = 'v0.1.0'   # pin a release (default: latest)
+    $env:HACKERCLAW_INSTALL_DIR    = 'C:\path'  # install location
+    $env:HACKERCLAW_SKILLS_DIR     = 'C:\path'  # shipped skills location
+    $env:HACKERCLAW_SKIP_SKILLS    = '1'        # install binary only
+    $env:HACKERCLAW_SKIP_CHECKSUM  = '1'        # install without SHA-256 verification (unsafe)
+    $env:HACKERCLAW_REPO           = 'owner/repo'
+    Legacy PENTESTERFLOW_* variables are accepted as fallbacks.
 #>
 
 #Requires -Version 5
 $ErrorActionPreference = 'Stop'
 
-$Repo = if ($env:PENTESTERFLOW_REPO) { $env:PENTESTERFLOW_REPO } else { 'PentesterFlow/agent' }
-$Bin  = 'pentesterflow'
+$Repo = if ($env:HACKERCLAW_REPO) {
+  $env:HACKERCLAW_REPO
+} elseif ($env:PENTESTERFLOW_REPO) {
+  $env:PENTESTERFLOW_REPO
+} else {
+  'youssefadelde298-star/hackerclaw'
+}
+$Bin = 'hackerclaw'
 
 # --- detect arch (only windows-x64 is published) -------------------------
 if (-not [Environment]::Is64BitOperatingSystem) {
@@ -32,7 +39,13 @@ if (-not [Environment]::Is64BitOperatingSystem) {
 }
 $asset = "$Bin-windows-x64.exe"
 
-$ver = if ($env:PENTESTERFLOW_VERSION) { $env:PENTESTERFLOW_VERSION.Trim() } else { 'latest' }
+$ver = if ($env:HACKERCLAW_VERSION) {
+  $env:HACKERCLAW_VERSION.Trim()
+} elseif ($env:PENTESTERFLOW_VERSION) {
+  $env:PENTESTERFLOW_VERSION.Trim()
+} else {
+  'latest'
+}
 if ($ver -ne 'latest' -and -not $ver.StartsWith('v')) {
   $ver = "v$ver"
 }
@@ -43,13 +56,14 @@ $base = if ($ver -eq 'latest') {
   "https://github.com/$Repo/releases/download/$ver"
 }
 
-$dir = if ($env:PENTESTERFLOW_INSTALL_DIR) {
-  $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($env:PENTESTERFLOW_INSTALL_DIR)
+$installDir = if ($env:HACKERCLAW_INSTALL_DIR) { $env:HACKERCLAW_INSTALL_DIR } else { $env:PENTESTERFLOW_INSTALL_DIR }
+$dir = if ($installDir) {
+  $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($installDir)
 } else {
   if (-not $env:LOCALAPPDATA) {
-    throw 'LOCALAPPDATA is not set; set PENTESTERFLOW_INSTALL_DIR explicitly.'
+    throw 'LOCALAPPDATA is not set; set HACKERCLAW_INSTALL_DIR explicitly.'
   }
-  Join-Path $env:LOCALAPPDATA 'Programs\pentesterflow'
+  Join-Path $env:LOCALAPPDATA 'Programs\HackerClaw'
 }
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 
@@ -70,15 +84,20 @@ try {
 
   # --- verify checksum (required; fail-closed) ----------------------------
   # A self-updating binary must not install an unverified download. Any
-  # failure to verify is fatal. Set $env:PENTESTERFLOW_SKIP_CHECKSUM='1' to
+  # failure to verify is fatal. Set $env:HACKERCLAW_SKIP_CHECKSUM='1' to
   # override (e.g. a mirror you trust by other means).
-  if ($env:PENTESTERFLOW_SKIP_CHECKSUM -eq '1') {
-    Write-Warning 'PENTESTERFLOW_SKIP_CHECKSUM=1 set - installing WITHOUT checksum verification'
+  $skipChecksum = if ($null -ne $env:HACKERCLAW_SKIP_CHECKSUM) {
+    $env:HACKERCLAW_SKIP_CHECKSUM
+  } else {
+    $env:PENTESTERFLOW_SKIP_CHECKSUM
+  }
+  if ($skipChecksum -eq '1') {
+    Write-Warning 'HACKERCLAW_SKIP_CHECKSUM=1 set - installing WITHOUT checksum verification'
   } else {
     try {
       $sums = (Invoke-WebRequest -Uri "$base/SHA256SUMS" -UseBasicParsing -ErrorAction Stop).Content
     } catch {
-      throw "could not download SHA256SUMS from $base - refusing to install an unverified binary (set `$env:PENTESTERFLOW_SKIP_CHECKSUM='1' to override): $($_.Exception.Message)"
+      throw "could not download SHA256SUMS from $base - refusing to install an unverified binary (set `$env:HACKERCLAW_SKIP_CHECKSUM='1' to override): $($_.Exception.Message)"
     }
     # Parse SHA256SUMS by exact filename. Each line is "<hex>  <name>"
     # (coreutils text mode) or "<hex> *<name>" (binary mode). Match the
@@ -98,7 +117,7 @@ try {
       $listed = (($sums -split "`r?`n") |
         ForEach-Object { if ($_ -match '^[0-9A-Fa-f]{64}\s+\*?(.+)$') { $matches[1].Trim() } } |
         Where-Object { $_ }) -join ', '
-      throw "SHA256SUMS does not list $asset - refusing to install an unverified binary (listed: $listed). Set `$env:PENTESTERFLOW_SKIP_CHECKSUM='1' to override."
+      throw "SHA256SUMS does not list $asset - refusing to install an unverified binary (listed: $listed). Set `$env:HACKERCLAW_SKIP_CHECKSUM='1' to override."
     }
     $got  = (Get-FileHash -Algorithm SHA256 -Path $download).Hash.ToLower()
     if ($got -ne $want) {
@@ -115,11 +134,17 @@ try {
   Write-Host "installed $Bin -> $dest"
 
   # --- install shipped skills --------------------------------------------
-  if ($env:PENTESTERFLOW_SKIP_SKILLS -ne '1') {
-    $skillsDir = if ($env:PENTESTERFLOW_SKILLS_DIR) {
-      $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($env:PENTESTERFLOW_SKILLS_DIR)
+  $skipSkills = if ($null -ne $env:HACKERCLAW_SKIP_SKILLS) {
+    $env:HACKERCLAW_SKIP_SKILLS
+  } else {
+    $env:PENTESTERFLOW_SKIP_SKILLS
+  }
+  if ($skipSkills -ne '1') {
+    $skillsPath = if ($env:HACKERCLAW_SKILLS_DIR) { $env:HACKERCLAW_SKILLS_DIR } else { $env:PENTESTERFLOW_SKILLS_DIR }
+    $skillsDir = if ($skillsPath) {
+      $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($skillsPath)
     } else {
-      Join-Path $env:USERPROFILE '.pentesterflow\builtin-skills'
+      Join-Path $env:USERPROFILE '.hackerclaw\builtin-skills'
     }
 
     $archiveRef = $ver
@@ -141,13 +166,15 @@ try {
         Select-Object -First 1
 
       if ($skillsSrc) {
-        $skillsStage = "$skillsDir.tmp.$PID"
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -LiteralPath $skillsStage
-        New-Item -ItemType Directory -Force -Path $skillsStage | Out-Null
-        Copy-Item -Recurse -Force -Path (Join-Path $skillsSrc.FullName '*') -Destination $skillsStage
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -LiteralPath $skillsDir
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $skillsDir) | Out-Null
-        Move-Item -Force -LiteralPath $skillsStage -Destination $skillsDir
+        New-Item -ItemType Directory -Force -Path $skillsDir | Out-Null
+        Get-ChildItem -LiteralPath $skillsSrc.FullName -File -Recurse | ForEach-Object {
+          $relative = $_.FullName.Substring($skillsSrc.FullName.Length).TrimStart([char[]]@('\', '/'))
+          $destination = Join-Path $skillsDir $relative
+          if (-not (Test-Path -LiteralPath $destination)) {
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+            Copy-Item -LiteralPath $_.FullName -Destination $destination
+          }
+        }
         Write-Host "installed shipped skills -> $skillsDir"
       } else {
         Write-Warning 'skills directory not found in source archive; skipping skills install'

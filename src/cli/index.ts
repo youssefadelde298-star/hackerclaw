@@ -111,8 +111,12 @@ function parseFlags(argv: string[]): ParsedFlags {
     burpPort: 9999,
     noStream: false,
     logPath: '',
-    debugSession: process.env.PENTESTERFLOW_DEBUG_SESSION === '1',
-    debugSessionPath: process.env.PENTESTERFLOW_DEBUG_SESSION_PATH ?? '',
+    debugSession:
+      (process.env.HACKERCLAW_DEBUG_SESSION ?? process.env.PENTESTERFLOW_DEBUG_SESSION) === '1',
+    debugSessionPath:
+      process.env.HACKERCLAW_DEBUG_SESSION_PATH ??
+      process.env.PENTESTERFLOW_DEBUG_SESSION_PATH ??
+      '',
     listSkills: false,
     listTools: false,
   };
@@ -248,6 +252,11 @@ async function main(): Promise<number> {
   if (cfg.backend === 'kimi' && !cfg.api_key) {
     cfg.api_key = process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY || '';
   }
+  // Region override for Moonshot: a .cn key must hit the .cn host. Honor an
+  // explicit base_url first, otherwise let the env point at the right region.
+  if (cfg.backend === 'kimi' && !cfg.base_url) {
+    cfg.base_url = process.env.MOONSHOT_BASE_URL || process.env.KIMI_BASE_URL || '';
+  }
   if (cfg.backend === 'groq' && !cfg.api_key) {
     cfg.api_key = process.env.GROQ_API_KEY || '';
   }
@@ -262,6 +271,12 @@ async function main(): Promise<number> {
   }
   if (cfg.backend === 'anthropic' && !cfg.api_key) {
     cfg.api_key = process.env.ANTHROPIC_API_KEY || '';
+  }
+  if (cfg.backend === 'glm' && !cfg.api_key) {
+    cfg.api_key = process.env.ZHIPU_API_KEY || process.env.GLM_API_KEY || '';
+  }
+  if (cfg.backend === 'glm' && !cfg.base_url) {
+    cfg.base_url = process.env.ZHIPU_BASE_URL || process.env.GLM_BASE_URL || '';
   }
 
   // Browser MCP is opt-in PER SESSION via --browser, and never persisted:
@@ -288,7 +303,7 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  // Skills: walk built-in + project-local (.pentesterflow/skills) + user dirs.
+  // Skills: walk built-in + project-local (.hackerclaw/skills) + user dirs.
   const skills = new SkillRegistry();
   const allSkillDirs = skillSearchDirs(cfg.skills_dirs);
   for (const d of allSkillDirs) skills.loadDir(d);
@@ -373,7 +388,7 @@ async function main(): Promise<number> {
   // `#`-saved fact stays in context for the rest of the session and beyond.
   const memoryStore = new MemoryStore();
   // Operator-authored engagement notes (scope/rules/creds). Read once at
-  // startup from project + home .pentesterflow/engagement.md; always injected
+  // startup from project + home .hackerclaw/engagement.md; always injected
   // into the system prompt so it survives compaction unconditionally.
   const engagement = new EngagementStore().load();
 
@@ -496,7 +511,7 @@ async function main(): Promise<number> {
 
   // First-run setup. Asked exactly once, before the agent is built (so
   // the system prompt is constructed with the chosen profile). The
-  // answer persists in ~/.pentesterflow/config.json so subsequent
+  // answer persists in ~/.hackerclaw/config.json so subsequent
   // launches skip this step.
   if (cfg.tooling_profile === undefined) {
     const picked = await runFirstRunPicker();
@@ -598,7 +613,7 @@ async function main(): Promise<number> {
   for (const d of skillDirsToWatch) watchDir(d);
 
   // When the user scaffolds a skill via `/skills new`, its dir (e.g.
-  // ./.pentesterflow/skills) may not have existed at startup, so it wasn't being
+  // ./.hackerclaw/skills) may not have existed at startup, so it wasn't being
   // watched. Add it to the reload walk + a watcher so subsequent edits
   // hot-reload like any other skill.
   const onSkillCreated = (skillRootDir: string): void => {

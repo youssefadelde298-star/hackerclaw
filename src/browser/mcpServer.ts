@@ -4,15 +4,15 @@
 // What this is, in one line: a small Node process you put in your MCP
 // client's mcp.json, that hosts a local ingest HTTP endpoint for the
 // browser extension AND re-exposes the captured traffic as MCP tools so
-// any MCP-aware client (Cursor, the pentesterflow agent itself, ...) can
+// any MCP-aware client (Cursor, the HackerClaw agent itself, ...) can
 // read it the same way.
 //
 //   Cursor       ──┐
 //   other clients──┼── stdio MCP ──► this process ──► CaptureStore ◄── HTTP /ingest ──── Chrome extension
-//   pentesterflow─┘
+//   hackerclaw───┘
 //
 // The ingest HTTP server binds 127.0.0.1 only and requires a per-process
-// token in X-Pentesterflow-Token.
+// token in X-HackerClaw-Token (the legacy X-Pentesterflow-Token is accepted).
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -21,7 +21,7 @@ import * as logger from '../logger/logger.js';
 import { startIngestServer } from './server.js';
 import { CaptureStore } from './store.js';
 
-const SERVER_NAME = 'pentesterflow-browser';
+const SERVER_NAME = 'hackerclaw-browser';
 const SERVER_VERSION = '0.1.0';
 const DEFAULT_PORT = 9999;
 
@@ -70,7 +70,7 @@ function printHelp(): void {
   process.stderr.write(`hackerclaw-browser-mcp ${SERVER_VERSION}
 
 Standalone MCP stdio server that bridges the HackerClaw Chrome extension
-to any MCP-aware client (Cursor, pentesterflow, ...).
+to any MCP-aware client (Cursor, HackerClaw, ...).
 
 Usage:
   hackerclaw-browser-mcp [flags]
@@ -84,7 +84,7 @@ Flags:
 In your MCP client's mcp.json:
   {
     "mcpServers": {
-      "pentesterflow-browser": {
+      "hackerclaw-browser": {
         "command": "hackerclaw-browser-mcp",
         "args": []
       }

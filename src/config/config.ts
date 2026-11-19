@@ -1,12 +1,12 @@
-// Config file at ~/.pentesterflow/config.json. Loaded once at startup; saved atomically (write to
+// Config file at ~/.hackerclaw/config.json. Loaded once at startup; saved atomically (write to
 // sibling .tmp + fsync + rename) so a crash mid-write can't corrupt it.
 
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { chmod, open, rename, unlink } from 'node:fs/promises';
-import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
+import { userStateDir } from './paths.js';
 
 // ---------- Schema ----------
 
@@ -21,6 +21,7 @@ const Backend = z.enum([
   'deepseek',
   'gemini',
   'anthropic',
+  'glm',
 ]);
 export type Backend = z.infer<typeof Backend>;
 
@@ -30,7 +31,7 @@ const MCPServerConfig = z.object({
     message: 'mcp_servers[].command must not contain shell metacharacters',
   }),
   args: z.array(z.string()).default([]),
-  env: z.record(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
 });
 export type MCPServerConfig = z.infer<typeof MCPServerConfig>;
 
@@ -41,7 +42,7 @@ const PluginConfig = z.object({
   }),
   args: z.array(z.string()).default([]),
   description: z.string().default(''),
-  schema: z.record(z.unknown()).optional(),
+  schema: z.record(z.string(), z.unknown()).optional(),
   requires_permission: z.boolean().default(false),
 });
 export type PluginConfig = z.infer<typeof PluginConfig>;
@@ -112,10 +113,9 @@ function noShellMeta(s: string): boolean {
 // ---------- Paths ----------
 
 export function configPath(): string {
-  const override = process.env.PENTESTERFLOW_CONFIG;
+  const override = process.env.HACKERCLAW_CONFIG || process.env.PENTESTERFLOW_CONFIG;
   if (override && override.length > 0) return override;
-  const home = homedir();
-  return join(home, '.pentesterflow', 'config.json');
+  return join(userStateDir(), 'config.json');
 }
 
 // ---------- Load / save ----------
@@ -161,7 +161,7 @@ async function writeConfig(path: string, body: string): Promise<void> {
   const dir = dirname(path);
   mkdirSync(dir, { recursive: true, mode: 0o700 });
 
-  const tmp = join(dir, `.pentesterflow.cfg.tmp.${randomBytes(3).toString('hex')}`);
+  const tmp = join(dir, `.hackerclaw.cfg.tmp.${randomBytes(3).toString('hex')}`);
 
   let fh: Awaited<ReturnType<typeof open>> | undefined;
   try {

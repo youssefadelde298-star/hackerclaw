@@ -1,0 +1,1 @@
+case_id,resource_type,resource_owner_role,tester_role,allowed_operation,authorized_scope_ref,expected_access,observed_access,sensitive_data_observed,evidence_ref,status,reviewer,notes

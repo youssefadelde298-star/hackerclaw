@@ -1,13 +1,14 @@
 // Skill discovery directories. Extracted from the CLI so the precedence
-// order is unit-testable. We read the PROJECT-local ./.pentesterflow/skills
+// order is unit-testable. We read the PROJECT-local ./.hackerclaw/skills
 // (it's about the repo you're in, so sharing it is deliberate) and
-// ~/.pentesterflow/skills for personal pentesterflow skills.
+// ~/.hackerclaw/skills for personal skills.
 
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { projectStateDir, userStateDir } from '../config/paths.js';
 
 export function builtinSkillsDir(): string {
-  // tsup bundles src/ into dist/ — skills/ sits next to dist at the
+  // The build bundles src/ into dist/ — skills/ sits next to dist at the
   // package root. Walking up from cwd works in dev and after install.
   return resolve(process.cwd(), 'skills');
 }
@@ -23,11 +24,13 @@ export function skillSearchDirs(
   cwd: string = process.cwd(),
   home: string = homedir(),
 ): string[] {
+  const projectDir = projectStateDir(cwd);
+  const userDir = userStateDir(home);
   return [
     resolve(cwd, 'skills'), // built-in
-    resolve(cwd, '.pentesterflow', 'skills'), // project-local (repo-scoped)
-    join(home, '.pentesterflow', 'builtin-skills'), // installer-managed shipped skills
-    join(home, '.pentesterflow', 'skills'), // personal pentesterflow skills
+    join(projectDir, 'skills'), // project-local (repo-scoped)
+    join(userDir, 'builtin-skills'), // installer-managed shipped skills
+    join(userDir, 'skills'), // personal skills
     ...configured.map((d) => resolve(d)), // explicit --skills / config (wins)
   ];
 }

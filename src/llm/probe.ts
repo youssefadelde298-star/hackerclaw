@@ -18,7 +18,7 @@ import type { Client } from './client.js';
 import type { ChatRequest, ToolSpec } from './types.js';
 
 const PROBE_TIMEOUT_MS = 8_000;
-const PING_TOOL_NAME = '__pentesterflow_probe_ping';
+const PING_TOOL_NAME = '__hackerclaw_probe_ping';
 
 /**
  * Status of the tool-calling capability probe:
@@ -73,7 +73,7 @@ export async function probeToolSupport(
       {
         role: 'system',
         content:
-          'You are a tool-calling probe. Your ONLY response must be a call to the `__pentesterflow_probe_ping` tool with value="ok". Do not produce any text. Do not call any other tool.',
+          'You are a tool-calling probe. Your ONLY response must be a call to the `__hackerclaw_probe_ping` tool with value="ok". Do not produce any text. Do not call any other tool.',
       },
       { role: 'user', content: 'probe' },
     ],
@@ -88,7 +88,7 @@ export async function probeToolSupport(
     return {
       toolSupport: 'no',
       detail:
-        'model returned text instead of a tool_call — agent loop will not work. Pick a function-calling model (e.g. qwen2.5-coder, llama3.1+).',
+        'model returned text instead of a tool_call — agent loop will not work. Pick a function-calling model. Local (Ollama) that tool-call reliably: qwen2.5-coder:14b+, llama3.1:8b+, qwen3:14b+, mistral-small. Small (<14b) models are unreliable here — for real runs prefer a hosted backend (GLM-4.6, Kimi, Claude).',
     };
   } catch (err) {
     warn('llm probe failed', { err: err instanceof Error ? err.message : String(err) });

@@ -1,4 +1,4 @@
-// Session persistence at ~/.pentesterflow/sessions/<uuid>.json. The JSON
+// Session persistence at ~/.hackerclaw/sessions/<uuid>.json. The JSON
 // schema is kept stable so saved sessions remain loadable across
 // versions.
 //
@@ -9,8 +9,8 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { chmod, open, rename, unlink } from 'node:fs/promises';
-import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
+import { userStateDir } from '../config/paths.js';
 import { Target } from '../target/target.js';
 
 // ---------- Shared message shape ----------
@@ -78,7 +78,7 @@ export function validateID(id: string): void {
 }
 
 export function dirFromPath(path: string): string {
-  if (!path) return join(homedir(), '.pentesterflow', 'sessions');
+  if (!path) return join(userStateDir(), 'sessions');
   return dirname(path);
 }
 

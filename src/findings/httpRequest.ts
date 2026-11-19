@@ -123,7 +123,7 @@ export function httpRequestFromCurl(command: string, fallbackMethod?: string): s
     // -A / --user-agent set the request User-Agent. Capture the value (space,
     // attached -Avalue, and --user-agent=value forms) and emit a header so the
     // replayed request keeps the original UA instead of falling back to the
-    // PentesterFlow default. Must run before the skip-value handling below.
+    // HackerClaw default. Must run before the skip-value handling below.
     if (arg === '-A' || arg === '--user-agent') {
       const ua = args[++i];
       if (ua && !hasHeader(headers, 'user-agent')) headers.push(`User-Agent: ${ua}`);
@@ -164,7 +164,7 @@ export function httpRequestFromCurl(command: string, fallbackMethod?: string): s
   for (const header of headers) {
     if (header.includes(':')) out.push(header);
   }
-  if (!hasHeader(headers, 'user-agent')) out.push('User-Agent: PentesterFlow');
+  if (!hasHeader(headers, 'user-agent')) out.push('User-Agent: HackerClaw');
   if (body && !hasHeader(headers, 'content-length')) {
     out.push(`Content-Length: ${Buffer.byteLength(body, 'utf8')}`);
   }
@@ -180,7 +180,7 @@ function fallbackRequest(rawUrl: string, method?: string): string {
     return `${method || 'GET'} / HTTP/1.1\r\nHost: localhost\r\n\r\n`;
   }
   const path = `${url.pathname || '/'}${url.search}`;
-  return `${method || 'GET'} ${path} HTTP/1.1\r\nHost: ${url.host}\r\nUser-Agent: PentesterFlow\r\n\r\n`;
+  return `${method || 'GET'} ${path} HTTP/1.1\r\nHost: ${url.host}\r\nUser-Agent: HackerClaw\r\n\r\n`;
 }
 
 function hasHeader(headers: string[], name: string): boolean {

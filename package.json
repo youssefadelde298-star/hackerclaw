@@ -14,7 +14,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "node scripts/build.mjs",
+    "smoke:build": "node scripts/smoke-build.mjs",
     "dev": "tsx src/cli/index.ts",
     "dev:burp": "tsx src/cli/index.ts --burp",
     "test": "vitest run",
@@ -22,7 +23,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome check src",
     "lint:fix": "biome check --write src",
-    "ci": "npm run typecheck && npm run lint && npm run test && npm run build"
+    "ci": "npm run typecheck && npm run lint && npm run test && npm run build && npm run smoke:build"
   },
   "keywords": [
     "pentest",
@@ -37,10 +38,10 @@
     "red-team"
   ],
   "license": "Apache-2.0",
-  "homepage": "https://github.com/pentesterflow/agent",
+  "homepage": "https://github.com/youssefadelde298-star/hackerclaw",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pentesterflow/agent.git"
+    "url": "https://github.com/youssefadelde298-star/hackerclaw.git"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -50,7 +51,7 @@
     "chalk": "^5.6.2",
     "cli-highlight": "^2.1.11",
     "execa": "^9.5.1",
-    "fast-glob": "^3.3.2",
+    "glob": "^14.0.6",
     "gray-matter": "^4.0.3",
     "ink": "^5.0.1",
     "ink-spinner": "^5.0.0",
@@ -60,7 +61,7 @@
     "react": "^18.3.1",
     "undici": "^6.21.0",
     "write-file-atomic": "^6.0.0",
-    "zod": "^3.23.8",
+    "zod": "^4.6.7",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
@@ -71,9 +72,9 @@
     "@types/write-file-atomic": "^4.0.3",
     "ink-testing-library": "^4.0.0",
     "react-devtools-core": "^4.28.5",
-    "tsup": "^8.3.5",
+    "esbuild": "^0.28.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^4.1.12"
   }
 }

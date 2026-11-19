@@ -1,21 +1,27 @@
 #!/bin/sh
-# pentesterflow online installer (macOS / Linux).
+# HackerClaw online installer (macOS / Linux).
 #
-#   curl -fsSL https://raw.githubusercontent.com/PentesterFlow/agent/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/youssefadelde298-star/hackerclaw/main/install.sh | sh
 #
 # Downloads the standalone binary for your OS/arch from the latest GitHub
 # release, verifies its SHA-256, and installs it to ~/.local/bin.
 #
 # Environment overrides:
-#   PENTESTERFLOW_VERSION=v0.1.0      pin a release tag (default: latest)
-#   PENTESTERFLOW_INSTALL_DIR=/path   install location (default: ~/.local/bin)
-#   PENTESTERFLOW_SKILLS_DIR=/path    shipped skills location (default: ~/.pentesterflow/builtin-skills)
-#   PENTESTERFLOW_SKIP_SKILLS=1       install binary only
-#   PENTESTERFLOW_SKIP_CHECKSUM=1     install without SHA-256 verification (unsafe)
+#   HACKERCLAW_VERSION=v0.1.0      pin a release tag (default: latest)
+#   HACKERCLAW_INSTALL_DIR=/path   install location (default: ~/.local/bin)
+#   HACKERCLAW_SKILLS_DIR=/path    shipped skills location (default: ~/.hackerclaw/builtin-skills)
+#   HACKERCLAW_SKIP_SKILLS=1       install binary only
+#   HACKERCLAW_SKIP_CHECKSUM=1     install without SHA-256 verification (unsafe)
+# Legacy PENTESTERFLOW_* variables are accepted as fallbacks.
 set -eu
 
-REPO="${PENTESTERFLOW_REPO:-PentesterFlow/agent}"
-BIN="pentesterflow"
+REPO="${HACKERCLAW_REPO:-${PENTESTERFLOW_REPO:-youssefadelde298-star/hackerclaw}}"
+VERSION="${HACKERCLAW_VERSION:-${PENTESTERFLOW_VERSION:-latest}}"
+INSTALL_DIR="${HACKERCLAW_INSTALL_DIR:-${PENTESTERFLOW_INSTALL_DIR:-}}"
+SKILLS_DIR="${HACKERCLAW_SKILLS_DIR:-${PENTESTERFLOW_SKILLS_DIR:-}}"
+SKIP_SKILLS="${HACKERCLAW_SKIP_SKILLS:-${PENTESTERFLOW_SKIP_SKILLS:-}}"
+SKIP_CHECKSUM="${HACKERCLAW_SKIP_CHECKSUM:-${PENTESTERFLOW_SKIP_CHECKSUM:-}}"
+BIN="hackerclaw"
 
 info() { printf '%s\n' "$*" >&2; }
 err() {
@@ -51,7 +57,7 @@ esac
 
 asset="${BIN}-${os}-${arch}"
 
-ver="${PENTESTERFLOW_VERSION:-latest}"
+ver="$VERSION"
 case "$ver" in
   latest | v*) ;;
   [0-9]*) ver="v${ver}" ;;
@@ -73,13 +79,13 @@ dl "${base}/${asset}" "${tmp}/${asset}" || err "download failed: ${base}/${asset
 
 # --- verify checksum (required; fail-closed) -----------------------------
 # A self-updating binary must not install an unverified download. Any failure
-# to verify is fatal. Set PENTESTERFLOW_SKIP_CHECKSUM=1 to override (e.g. an
+# to verify is fatal. Set HACKERCLAW_SKIP_CHECKSUM=1 to override (e.g. an
 # air-gapped mirror you trust by other means).
-if [ "${PENTESTERFLOW_SKIP_CHECKSUM:-}" = "1" ]; then
-  info "warning: PENTESTERFLOW_SKIP_CHECKSUM=1 set — installing WITHOUT checksum verification"
+if [ "$SKIP_CHECKSUM" = "1" ]; then
+  info "warning: HACKERCLAW_SKIP_CHECKSUM=1 set — installing WITHOUT checksum verification"
 else
   dl_stdout "${base}/SHA256SUMS" >"${tmp}/SHA256SUMS" 2>/dev/null ||
-    err "could not download SHA256SUMS from ${base} — refusing to install an unverified binary (set PENTESTERFLOW_SKIP_CHECKSUM=1 to override)"
+    err "could not download SHA256SUMS from ${base} — refusing to install an unverified binary (set HACKERCLAW_SKIP_CHECKSUM=1 to override)"
   [ -s "${tmp}/SHA256SUMS" ] ||
     err "downloaded SHA256SUMS is empty — refusing to install an unverified binary"
   want=$(awk -v a="$asset" '$2==a {print $1}' "${tmp}/SHA256SUMS" | head -n1)
@@ -90,7 +96,7 @@ else
   elif command -v shasum >/dev/null 2>&1; then
     got=$(shasum -a 256 "${tmp}/${asset}" | awk '{print $1}')
   else
-    err "no sha256sum/shasum tool found — cannot verify the download (set PENTESTERFLOW_SKIP_CHECKSUM=1 to override)"
+    err "no sha256sum/shasum tool found — cannot verify the download (set HACKERCLAW_SKIP_CHECKSUM=1 to override)"
   fi
   [ "$got" = "$want" ] ||
     err "checksum mismatch for ${asset} (expected ${want}, got ${got})"
@@ -98,10 +104,10 @@ else
 fi
 
 # --- install --------------------------------------------------------------
-if [ -n "${PENTESTERFLOW_INSTALL_DIR:-}" ]; then
-  dir="$PENTESTERFLOW_INSTALL_DIR"
+if [ -n "$INSTALL_DIR" ]; then
+  dir="$INSTALL_DIR"
 else
-  [ -n "${HOME:-}" ] || err "HOME is not set; set PENTESTERFLOW_INSTALL_DIR explicitly"
+  [ -n "${HOME:-}" ] || err "HOME is not set; set HACKERCLAW_INSTALL_DIR explicitly"
   dir="$HOME/.local/bin"
 fi
 
@@ -123,12 +129,12 @@ fi
 info "installed ${BIN} -> ${dest}"
 
 # --- install shipped skills ----------------------------------------------
-if [ "${PENTESTERFLOW_SKIP_SKILLS:-}" != "1" ]; then
-  if [ -n "${PENTESTERFLOW_SKILLS_DIR:-}" ]; then
-    skills_dir="$PENTESTERFLOW_SKILLS_DIR"
+if [ "$SKIP_SKILLS" != "1" ]; then
+  if [ -n "$SKILLS_DIR" ]; then
+    skills_dir="$SKILLS_DIR"
   else
-    [ -n "${HOME:-}" ] || err "HOME is not set; set PENTESTERFLOW_SKILLS_DIR explicitly"
-    skills_dir="$HOME/.pentesterflow/builtin-skills"
+    [ -n "${HOME:-}" ] || err "HOME is not set; set HACKERCLAW_SKILLS_DIR explicitly"
+    skills_dir="$HOME/.hackerclaw/builtin-skills"
   fi
 
   if command -v tar >/dev/null 2>&1; then
@@ -144,13 +150,8 @@ if [ "${PENTESTERFLOW_SKIP_SKILLS:-}" != "1" ]; then
     tar -xzf "${tmp}/source.tar.gz" -C "${tmp}/source" || err "failed to extract skills archive"
     skills_src=$(find "${tmp}/source" -type d -path "*/skills" | head -n1)
     if [ -n "$skills_src" ] && [ -d "$skills_src" ]; then
-      skills_stage="${skills_dir}.tmp.$$"
-      rm -rf "$skills_stage"
-      mkdir -p "$skills_stage"
-      cp -R "$skills_src"/. "$skills_stage"/ || err "failed to stage shipped skills"
-      rm -rf "$skills_dir"
-      mkdir -p "$(dirname "$skills_dir")"
-      mv "$skills_stage" "$skills_dir" || err "failed to install shipped skills"
+      mkdir -p "$skills_dir"
+      cp -Rn "$skills_src"/. "$skills_dir"/ || err "failed to merge shipped skills"
       info "installed shipped skills -> ${skills_dir}"
     else
       info "warning: skills directory not found in source archive — skipping skills install"

@@ -13,6 +13,8 @@ import {
   DEEPSEEK_DEFAULT_MODEL,
   GEMINI_DEFAULT_BASE_URL,
   GEMINI_DEFAULT_MODEL,
+  GLM_DEFAULT_BASE_URL,
+  GLM_DEFAULT_MODEL,
   GROQ_DEFAULT_BASE_URL,
   GROQ_DEFAULT_MODEL,
   KIMI_DEFAULT_BASE_URL,
@@ -42,7 +44,11 @@ export function newFromConfig(cfg: Config): Client {
       return new OpenAIClient(cfg.base_url, cfg.api_key, cfg.model, 'openai-compat', {}, gen);
     case 'kimi':
       if (!cfg.api_key) {
-        throw new Error('kimi backend requires api_key or MOONSHOT_API_KEY');
+        throw new Error(
+          'kimi backend requires api_key or MOONSHOT_API_KEY. ' +
+            'Note: a key from platform.moonshot.cn only works against the .cn endpoint — ' +
+            'set base_url to https://api.moonshot.cn/v1 (or MOONSHOT_BASE_URL) for China keys.',
+        );
       }
       return new OpenAIClient(
         cfg.base_url || KIMI_DEFAULT_BASE_URL,
@@ -76,8 +82,8 @@ export function newFromConfig(cfg: Config): Client {
         cfg.model || OPENROUTER_DEFAULT_MODEL,
         'openrouter',
         {
-          'HTTP-Referer': 'https://github.com/pentesterflow/agent',
-          'X-OpenRouter-Title': 'PentesterFlow',
+          'HTTP-Referer': 'https://github.com/youssefadelde298-star/hackerclaw',
+          'X-OpenRouter-Title': 'HackerClaw',
         },
         gen,
       );
@@ -113,6 +119,22 @@ export function newFromConfig(cfg: Config): Client {
         cfg.base_url || ANTHROPIC_DEFAULT_BASE_URL,
         cfg.api_key,
         cfg.model || ANTHROPIC_DEFAULT_MODEL,
+        gen,
+      );
+    case 'glm':
+      if (!cfg.api_key) {
+        throw new Error('glm backend requires api_key or ZHIPU_API_KEY / GLM_API_KEY');
+      }
+      // Zhipu/Z.ai GLM speaks the OpenAI Chat Completions wire format, so it
+      // rides the OpenAIClient like Kimi/DeepSeek. Default to the international
+      // Z.ai host; override base_url (or ZHIPU_BASE_URL / GLM_BASE_URL env) for
+      // the China open.bigmodel.cn endpoint.
+      return new OpenAIClient(
+        cfg.base_url || GLM_DEFAULT_BASE_URL,
+        cfg.api_key,
+        cfg.model || GLM_DEFAULT_MODEL,
+        'glm',
+        {},
         gen,
       );
     default: {

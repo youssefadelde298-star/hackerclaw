@@ -75,7 +75,7 @@ function handle(
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'Content-Type, X-Pentesterflow-Source, X-Pentesterflow-Token',
+    'Content-Type, X-HackerClaw-Source, X-HackerClaw-Token, X-Pentesterflow-Source, X-Pentesterflow-Token',
   );
 
   if (req.method === 'OPTIONS') {
@@ -226,7 +226,7 @@ function parseRequestURL(req: IncomingMessage): URL {
 }
 
 function authorized(req: IncomingMessage, token: string): boolean {
-  const header = req.headers['x-pentesterflow-token'];
+  const header = req.headers['x-hackerclaw-token'] ?? req.headers['x-pentesterflow-token'];
   const headerToken = Array.isArray(header) ? (header[0] ?? '') : (header ?? '');
   return constantTimeEqual(headerToken, token);
 }

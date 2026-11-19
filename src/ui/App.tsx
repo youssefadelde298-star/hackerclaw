@@ -3,7 +3,7 @@
 // input.
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { Chalk } from 'chalk';
 import { Box, useApp, useInput, useStdout } from 'ink';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
@@ -11,6 +11,7 @@ import type { Agent, AgentRunOptions } from '../agent/agent.js';
 import { type AgentEvent, MaxStepsError } from '../agent/events.js';
 import { findActiveMention, listMentionDir, parseMentionPath } from '../agent/mentions.js';
 import type { Backend } from '../config/config.js';
+import { projectStateDir } from '../config/paths.js';
 import { generateReport } from '../findings/report.js';
 import { listModels } from '../llm/models.js';
 import {
@@ -21,6 +22,8 @@ import {
   GEMINI_CHEAP_MODELS,
   GEMINI_DEFAULT_BASE_URL,
   GEMINI_RECOMMENDED_MODELS,
+  GLM_DEFAULT_BASE_URL,
+  GLM_MODELS,
   GROQ_DEFAULT_BASE_URL,
   GROQ_MODELS,
   KIMI_DEFAULT_BASE_URL,
@@ -66,7 +69,7 @@ export interface ProviderChange {
   apiKey?: string;
 }
 export type ApplyProvider = (change: ProviderChange) => Promise<void>;
-/** Persist a disabled-skills list change (writes ~/.pentesterflow/config.json). */
+/** Persist a disabled-skills list change (writes ~/.hackerclaw/config.json). */
 export type PersistDisabledSkills = (names: string[]) => Promise<void>;
 
 const MENTION_LIMIT = 12;
@@ -99,7 +102,7 @@ export interface AppProps {
   /** Optional bridge: lets the CLI push BannerData patches (e.g. tool-support
    *  probe result, detected num_ctx) after the TUI has mounted. */
   bindBannerPublisher?: (publish: (patch: Partial<BannerData>) => void) => void;
-  /** Persist /skills enable/disable to ~/.pentesterflow/config.json. */
+  /** Persist /skills enable/disable to ~/.hackerclaw/config.json. */
   persistDisabledSkills?: PersistDisabledSkills;
   /** Optional complete JSONL debug log for real-world session triage. */
   sessionDebug?: SessionDebugLog;
@@ -109,7 +112,7 @@ export interface AppProps {
   /** Optional bridge for out-of-loop system notices — live-reload uses
    *  it to surface "skill reloaded" without a modal. */
   bindNoticePublisher?: (publish: (text: string) => void) => void;
-  /** Start the local Burp/PentesterFlow bridge on demand from /burp. */
+  /** Start the local Burp/HackerClaw bridge on demand from /burp. */
   startBurpBridge?: (
     port?: number,
   ) => Promise<{ url: string; token: string; alreadyRunning: boolean }>;
@@ -1453,6 +1456,8 @@ function backendLabel(backend: Backend): string {
       return 'Gemini';
     case 'anthropic':
       return 'Claude';
+    case 'glm':
+      return 'GLM';
   }
 }
 
@@ -1504,7 +1509,7 @@ Rules:
  * /skills — list / enable / disable. Without args, prints the loaded
  * skills with their on/off state. `/skills <name>` toggles. Explicit
  * `/skills enable <name>` and `/skills disable <name>` are also accepted.
- * Persistence to ~/.pentesterflow/config.json is delegated to the
+ * Persistence to ~/.hackerclaw/config.json is delegated to the
  * persistDisabledSkills callback wired by the CLI.
  */
 function handleSkillsCommand(
@@ -1532,7 +1537,7 @@ function handleSkillsCommand(
   }
 
   // /skills new <name> — scaffold a skill under
-  // ./.pentesterflow/skills/<name>/SKILL.md (an auto-discovered dir), then
+  // ./.hackerclaw/skills/<name>/SKILL.md (an auto-discovered dir), then
   // hot-load it so it's usable immediately via /<name>.
   if (rest[0] === 'new') {
     const name = (rest[1] ?? '').trim();
@@ -1546,7 +1551,7 @@ function handleSkillsCommand(
       });
       return;
     }
-    const skillsRoot = resolve(process.cwd(), '.pentesterflow', 'skills');
+    const skillsRoot = join(projectStateDir(), 'skills');
     const dir = join(skillsRoot, name);
     const file = join(dir, 'SKILL.md');
     if (existsSync(file)) {
@@ -1564,7 +1569,7 @@ function handleSkillsCommand(
       agent.skills.loadDir(skillsRoot);
       agent.rebuildFromSkills();
       // Tell the CLI to start watching this dir so future edits hot-reload
-      // even if .pentesterflow/skills didn't exist at startup.
+      // even if .hackerclaw/skills didn't exist at startup.
       onSkillCreated?.(skillsRoot);
       dispatch({
         type: 'append',
@@ -1791,6 +1796,7 @@ function openProviderPicker(
   const labelOpenRouter = `OpenRouter${cur.backend === 'openrouter' ? ' (current)' : ''}`;
   const labelDeepSeek = `DeepSeek${cur.backend === 'deepseek' ? ' (current)' : ''}`;
   const labelClaude = `Claude${cur.backend === 'anthropic' ? ' (current)' : ''}`;
+  const labelGLM = `GLM${cur.backend === 'glm' ? ' (current)' : ''}`;
 
   const req: AskRequest = {
     question: {
@@ -1824,6 +1830,10 @@ function openProviderPicker(
           description: 'remote — api.deepseek.com OpenAI-compatible API',
         },
         {
+          label: labelGLM,
+          description: 'remote — Zhipu/Z.ai GLM-4.6 OpenAI-compatible API',
+        },
+        {
           label: labelOAI,
           description: 'remote — needs base URL + API key (uses current config values)',
         },
@@ -1847,7 +1857,9 @@ function openProviderPicker(
                     ? 'deepseek'
                     : picked.startsWith('Claude')
                       ? 'anthropic'
-                      : 'openai-compat';
+                      : picked.startsWith('GLM')
+                        ? 'glm'
+                        : 'openai-compat';
       const config = readConfig();
       // For openai-compat we need URL + key already in config.
       if (backend === 'openai-compat' && (!config.baseURL || !config.apiKey)) {
@@ -1857,7 +1869,7 @@ function openProviderPicker(
             kind: 'error',
             text:
               'openai-compat needs a base URL + API key. Restart with --base-url + --api-key, ' +
-              'or pre-set them in ~/.pentesterflow/config.json, then run /provider again.',
+              'or pre-set them in ~/.hackerclaw/config.json, then run /provider again.',
           },
         });
         return;
@@ -2050,6 +2062,39 @@ function openProviderPicker(
           });
         return;
       }
+      if (backend === 'glm' && (config.backend !== 'glm' || !config.apiKey)) {
+        void promptSecret({
+          header: 'GLM API',
+          question: 'Enter Zhipu/Z.ai API key (ZHIPU_API_KEY)',
+          placeholder: '...',
+        })
+          .then((apiKey) => {
+            if (!apiKey) {
+              dispatch({
+                type: 'append',
+                entry: { kind: 'error', text: 'GLM API key cannot be empty.' },
+              });
+              return;
+            }
+            void fetchAndPickModel(
+              backend,
+              config.backend === 'glm'
+                ? config.baseURL || GLM_DEFAULT_BASE_URL
+                : GLM_DEFAULT_BASE_URL,
+              apiKey,
+              dispatch,
+              applyProvider,
+              { successText: (picked) => `provider set to GLM · model ${picked}` },
+            );
+          })
+          .catch(() => {
+            dispatch({
+              type: 'append',
+              entry: { kind: 'system', text: 'GLM setup cancelled.' },
+            });
+          });
+        return;
+      }
       const baseURL =
         backend === 'openai-compat'
           ? config.baseURL
@@ -2077,7 +2122,11 @@ function openProviderPicker(
                       ? config.backend === 'anthropic'
                         ? config.baseURL || ANTHROPIC_DEFAULT_BASE_URL
                         : ANTHROPIC_DEFAULT_BASE_URL
-                      : '';
+                      : backend === 'glm'
+                        ? config.backend === 'glm'
+                          ? config.baseURL || GLM_DEFAULT_BASE_URL
+                          : GLM_DEFAULT_BASE_URL
+                        : '';
       const apiKey = backend === 'openai-compat' || config.backend === backend ? config.apiKey : '';
       void fetchAndPickModel(backend, baseURL, apiKey, dispatch, applyProvider);
     },
@@ -2208,5 +2257,6 @@ function modelDescription(
     else if (GEMINI_RECOMMENDED_MODELS.includes(model)) parts.push('best fit');
   }
   if (backend === 'anthropic' && ANTHROPIC_RECOMMENDED_MODELS.includes(model)) parts.push('Claude');
+  if (backend === 'glm' && GLM_MODELS.includes(model)) parts.push('GLM/Zhipu');
   return parts.length > 0 ? parts.join(' · ') : undefined;
 }

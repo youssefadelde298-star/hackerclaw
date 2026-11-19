@@ -25,6 +25,7 @@ dist/
 /findings/
 /reports/
 /recon/
+/.hackerclaw/
 /.pentesterflow/
 bughunter-report-*.md
 
@@ -33,3 +34,6 @@ hackerclaw.exe
 *.exe
 via-burp-test.mjs
 _*.mjs
+
+# build output (do not commit compiled bundles)
+/dist/

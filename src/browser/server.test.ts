@@ -28,6 +28,11 @@ describe('browser ingest server', () => {
     });
     expect(authedStatus.status).toBe(200);
 
+    const currentHeaderStatus = await fetch(`${base}/status`, {
+      headers: { 'X-HackerClaw-Token': 'secret-token' },
+    });
+    expect(currentHeaderStatus.status).toBe(200);
+
     const authedPost = await fetch(`${base}/ingest`, {
       method: 'POST',
       headers: {
