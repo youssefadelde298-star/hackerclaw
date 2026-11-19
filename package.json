@@ -16,6 +16,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "smoke:build": "node scripts/smoke-build.mjs",
+    "preflight": "tsx scripts/preflight.mts",
     "dev": "tsx src/cli/index.ts",
     "dev:burp": "tsx src/cli/index.ts --burp",
     "test": "vitest run",
